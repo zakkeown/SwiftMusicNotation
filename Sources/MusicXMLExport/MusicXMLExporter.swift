@@ -3,6 +3,7 @@
 
 import Foundation
 import MusicNotationCore
+import ZIPFoundation
 
 // MARK: - MusicXML Exporter
 
@@ -228,8 +229,9 @@ public final class MusicXMLExporter {
     /// MXL is a compressed container format for MusicXML that uses ZIP
     /// compression. This reduces file size for complex scores.
     ///
-    /// > Note: The current implementation writes uncompressed MusicXML.
-    /// > Full MXL compression will be added in a future version.
+    /// The archive contains:
+    /// - `META-INF/container.xml`: Points to the root MusicXML file
+    /// - `score.musicxml`: The actual MusicXML content
     ///
     /// - Parameters:
     ///   - score: The score to export.
@@ -238,9 +240,45 @@ public final class MusicXMLExporter {
     ///
     /// - Throws: ``MusicXMLExportError`` if the export fails.
     public func exportCompressed(_ score: Score, to url: URL) throws {
-        // For now, just write uncompressed - ZIP compression would require ZIPFoundation
-        let data = try export(score)
-        try data.write(to: url)
+        let musicXMLData = try export(score)
+
+        // Create container.xml content
+        let containerXML = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <container>
+          <rootfiles>
+            <rootfile full-path="score.musicxml"/>
+          </rootfiles>
+        </container>
+        """
+        guard let containerData = containerXML.data(using: .utf8) else {
+            throw MusicXMLExportError.encodingFailed
+        }
+
+        // Create the archive
+        guard let archive = Archive(url: url, accessMode: .create) else {
+            throw MusicXMLExportError.fileWriteFailed(url.path)
+        }
+
+        // Add META-INF/container.xml
+        try archive.addEntry(
+            with: "META-INF/container.xml",
+            type: .file,
+            uncompressedSize: Int64(containerData.count),
+            provider: { position, size in
+                containerData.subdata(in: Int(position)..<Int(position) + size)
+            }
+        )
+
+        // Add score.musicxml
+        try archive.addEntry(
+            with: "score.musicxml",
+            type: .file,
+            uncompressedSize: Int64(musicXMLData.count),
+            provider: { position, size in
+                musicXMLData.subdata(in: Int(position)..<Int(position) + size)
+            }
+        )
     }
 
     // MARK: - Header Elements
@@ -1189,11 +1227,17 @@ public enum MusicXMLExportError: Error, LocalizedError {
     /// avoids this issue.
     case encodingError
 
+    /// String data could not be encoded to UTF-8.
+    case encodingFailed
+
     /// The file could not be written to the specified URL.
     ///
     /// This can occur due to permission issues, disk space, or an invalid path.
     /// The associated value contains the target URL.
     case fileWriteError(URL)
+
+    /// Failed to write file at the specified path.
+    case fileWriteFailed(String)
 
     /// The score contains invalid data that cannot be exported.
     ///
@@ -1204,8 +1248,12 @@ public enum MusicXMLExportError: Error, LocalizedError {
         switch self {
         case .encodingError:
             return "Failed to encode XML to the specified encoding"
+        case .encodingFailed:
+            return "Failed to encode string data to UTF-8"
         case .fileWriteError(let url):
             return "Failed to write file to \(url.path)"
+        case .fileWriteFailed(let path):
+            return "Failed to create archive at \(path)"
         case .invalidScore(let reason):
             return "Invalid score: \(reason)"
         }

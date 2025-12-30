@@ -290,15 +290,18 @@ public final class PlaybackEngine: ObservableObject {
             try await synthesizer?.setup()
         }
 
-        // Create sequencer
-        sequencer = ScoreSequencer(score: score)
-        sequencer?.tempo = tempo
+        // Create sequencer and build sequence before assigning
+        let newSequencer = ScoreSequencer(score: score)
+        newSequencer.tempo = tempo
+
+        // Build sequence first - if this throws, we don't update state
+        try newSequencer.buildSequence()
+
+        // Only assign after successful build
+        sequencer = newSequencer
 
         // Create cursor
         cursor = PlaybackCursor(score: score)
-
-        // Build the event sequence
-        try sequencer?.buildSequence()
 
         isLoaded = true
         currentPosition = .zero

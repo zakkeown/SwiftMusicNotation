@@ -379,9 +379,11 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
     case stringsSnapPizzicatoBelow = "stringsSnapPizzicatoBelow" // U+E631
 
     /// The Unicode code point for this glyph in the SMuFL Private Use Area.
+    ///
+    /// Code points follow the SMuFL specification. For glyphs not listed here,
+    /// use `LoadedSMuFLFont.glyph(for:)` which looks up the glyph in the font's
+    /// metadata at runtime.
     public var codePoint: UInt32 {
-        // This would ideally be loaded from glyphnames.json
-        // For now, returning placeholder values for key glyphs
         switch self {
         // Clefs
         case .gClef: return 0xE050

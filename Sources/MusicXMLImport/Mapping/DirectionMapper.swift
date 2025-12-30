@@ -307,35 +307,44 @@ public struct DirectionMapper {
     }
 
     private func mapMetronome(from element: XMLElement) -> Metronome? {
-        // Parse beat unit
-        guard let beatUnitStr = element.child(named: "beat-unit")?.textContent,
-              let beatUnit = DurationBase(musicXMLTypeName: beatUnitStr) else {
-            return nil
-        }
+        // MusicXML structure: beat-unit, beat-unit-dot*, (per-minute | (beat-unit, beat-unit-dot*))
+        // We need to parse in order to correctly associate dots with their beat-units
 
-        // Count beat unit dots
-        let beatUnitDots = element.children(named: "beat-unit-dot").count
-
-        // Parse per minute
-        let perMinute = element.child(named: "per-minute")?.textContent
-
-        // Parse second beat unit (for metric modulation)
+        var beatUnit: DurationBase?
+        var beatUnitDots = 0
         var beatUnit2: DurationBase?
         var beatUnit2Dots = 0
+        var perMinute: String?
+        var foundFirstBeatUnit = false
 
-        // Find second beat-unit (after per-minute or first beat-unit)
-        let beatUnitElements = element.children(named: "beat-unit")
-        if beatUnitElements.count > 1 {
-            if let secondBeatUnitStr = beatUnitElements[1].textContent {
-                beatUnit2 = DurationBase(musicXMLTypeName: secondBeatUnitStr)
+        for child in element.children {
+            switch child.name {
+            case "beat-unit":
+                if let typeStr = child.textContent,
+                   let duration = DurationBase(musicXMLTypeName: typeStr) {
+                    if !foundFirstBeatUnit {
+                        beatUnit = duration
+                        foundFirstBeatUnit = true
+                    } else {
+                        beatUnit2 = duration
+                    }
+                }
+            case "beat-unit-dot":
+                // Dots apply to the most recently parsed beat-unit
+                if beatUnit2 != nil {
+                    beatUnit2Dots += 1
+                } else if foundFirstBeatUnit {
+                    beatUnitDots += 1
+                }
+            case "per-minute":
+                perMinute = child.textContent
+            default:
+                break
             }
         }
 
-        // Count second beat unit dots if present
-        // This is a simplification - proper implementation would track which dots go with which beat-unit
-        if beatUnit2 != nil {
-            // For now, assume all dots after the first beat-unit-dot sequence go to second
-            beatUnit2Dots = max(0, element.children(named: "beat-unit-dot").count - beatUnitDots)
+        guard let beatUnit = beatUnit else {
+            return nil
         }
 
         // Check for parentheses

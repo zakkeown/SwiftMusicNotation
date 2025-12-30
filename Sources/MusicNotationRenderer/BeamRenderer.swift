@@ -223,10 +223,11 @@ public final class BeamRenderer {
         stemEnds: [CGPoint],
         stemDirection: StemDirection
     ) -> (start: CGPoint, end: CGPoint, slope: CGFloat)? {
-        guard stemEnds.count >= 2 else { return nil }
-
-        let firstStemEnd = stemEnds.first!
-        let lastStemEnd = stemEnds.last!
+        guard let firstStemEnd = stemEnds.first,
+              let lastStemEnd = stemEnds.last,
+              stemEnds.count >= 2 else {
+            return nil
+        }
 
         // Calculate ideal slope
         let dx = lastStemEnd.x - firstStemEnd.x
@@ -498,11 +499,13 @@ public struct BeamGroupBuilder {
 
     /// Builds the beam group render info.
     public func build(config: BeamRenderConfiguration) -> BeamGroupRenderInfo? {
-        guard stemEnds.count >= 2 else { return nil }
+        guard let firstEnd = stemEnds.first,
+              let lastEnd = stemEnds.last,
+              stemEnds.count >= 2 else {
+            return nil
+        }
 
         // Calculate primary beam
-        let firstEnd = stemEnds.first!
-        let lastEnd = stemEnds.last!
         let dx = lastEnd.x - firstEnd.x
         let slope = dx != 0 ? (lastEnd.y - firstEnd.y) / dx : 0
         let clampedSlope = max(-config.maxBeamSlope, min(config.maxBeamSlope, slope))

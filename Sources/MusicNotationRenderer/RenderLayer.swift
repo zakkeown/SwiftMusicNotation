@@ -244,9 +244,9 @@ public final class DirtyRegionTracker {
         if fullRedraw {
             return nil // Indicates full redraw needed
         }
-        guard !dirtyRects.isEmpty else { return CGRect.zero }
+        guard let firstRect = dirtyRects.first else { return CGRect.zero }
 
-        var combined = dirtyRects[0]
+        var combined = firstRect
         for rect in dirtyRects.dropFirst() {
             combined = combined.union(rect)
         }
