@@ -14,7 +14,7 @@ Thank you for your interest in contributing to SwiftMusicNotation! This document
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/SwiftMusicNotation.git
+git clone https://github.com/zakkeown/SwiftMusicNotation.git
 cd SwiftMusicNotation
 
 # Build the package

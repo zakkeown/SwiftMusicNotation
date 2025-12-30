@@ -16,7 +16,7 @@ SwiftMusicNotation is distributed as a Swift Package. You can add it to your pro
 2. Select **File > Add Package Dependencies...**
 3. Enter the repository URL:
    ```
-   https://github.com/yourusername/SwiftMusicNotation.git
+   https://github.com/zakkeown/SwiftMusicNotation.git
    ```
 4. Select the version rule (recommended: "Up to Next Major Version")
 5. Click **Add Package**
@@ -40,7 +40,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/yourusername/SwiftMusicNotation.git",
+            url: "https://github.com/zakkeown/SwiftMusicNotation.git",
             from: "1.0.0"
         )
     ],

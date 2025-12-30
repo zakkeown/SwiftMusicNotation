@@ -35,7 +35,7 @@ Add SwiftMusicNotation to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/SwiftMusicNotation.git", from: "1.0.0")
+    .package(url: "https://github.com/zakkeown/SwiftMusicNotation.git", from: "1.0.0")
 ]
 ```
 
@@ -163,7 +163,7 @@ MusicXML → MusicXMLImporter → Score → LayoutEngine → EngravedScore → M
 
 Full documentation is available via DocC:
 
-- **Online**: [SwiftMusicNotation Documentation](https://yourusername.github.io/SwiftMusicNotation/documentation/swiftmusicnotation/)
+- **Online**: [SwiftMusicNotation Documentation](https://zakkeown.github.io/SwiftMusicNotation/documentation/swiftmusicnotation/)
 - **Xcode**: **Product > Build Documentation**
 - **Command Line**:
   ```bash
@@ -189,6 +189,6 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ### Quick Links
 
-- [Report a Bug](https://github.com/yourusername/SwiftMusicNotation/issues)
-- [Request a Feature](https://github.com/yourusername/SwiftMusicNotation/issues)
-- [View Documentation](https://yourusername.github.io/SwiftMusicNotation/)
+- [Report a Bug](https://github.com/zakkeown/SwiftMusicNotation/issues)
+- [Request a Feature](https://github.com/zakkeown/SwiftMusicNotation/issues)
+- [View Documentation](https://zakkeown.github.io/SwiftMusicNotation/)
