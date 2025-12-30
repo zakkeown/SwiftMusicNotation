@@ -1,0 +1,173 @@
+{
+  "version": "1.0",
+  "scores": [
+    {
+      "filename": "Bach_Minuet_in_G_Major_BWV_Anh._114.mxl",
+      "title": "Minuet in G Major",
+      "composer": "J.S. Bach",
+      "category": "basic",
+      "complexity": 1,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "slurs", "dynamics"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Canon_in_D_easy.mxl",
+      "title": "Canon in D (Easy)",
+      "composer": "Johann Pachelbel",
+      "category": "basic",
+      "complexity": 1,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Happy_Birthday_To_You_C_Major.mxl",
+      "title": "Happy Birthday",
+      "composer": null,
+      "category": "basic",
+      "complexity": 1,
+      "expectedFeatures": ["pitchedNotes", "rests"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Ode_to_Joy_Easy_variation.mxl",
+      "title": "Ode to Joy (Easy)",
+      "composer": "Ludwig van Beethoven",
+      "category": "basic",
+      "complexity": 1,
+      "expectedFeatures": ["pitchedNotes", "rests", "chords"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Fur_Elise.mxl",
+      "title": "Fur Elise",
+      "composer": "Ludwig van Beethoven",
+      "category": "intermediate",
+      "complexity": 2,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "slurs", "dynamics", "articulations", "pedal"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Erik_Satie_-_Gymnopedie_No.1.mxl",
+      "title": "Gymnopedie No. 1",
+      "composer": "Erik Satie",
+      "category": "intermediate",
+      "complexity": 2,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "dynamics", "pedal"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Chopin_-_Nocturne_Op_9_No_2_E_Flat_Major.mxl",
+      "title": "Nocturne Op. 9 No. 2",
+      "composer": "Frederic Chopin",
+      "category": "intermediate",
+      "complexity": 3,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "slurs", "tuplets", "dynamics", "ornaments", "pedal", "multipleVoices"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Arabesque_L._66_No._1_in_E_Major.mxl",
+      "title": "Arabesque No. 1",
+      "composer": "Claude Debussy",
+      "category": "intermediate",
+      "complexity": 3,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "slurs", "tuplets", "dynamics", "pedal", "multipleVoices"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Bach_Toccata_and_Fugue_in_D_Minor_Piano_solo.mxl",
+      "title": "Toccata and Fugue in D Minor",
+      "composer": "J.S. Bach",
+      "category": "advanced",
+      "complexity": 4,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "chords", "dynamics", "multipleVoices", "multipleStaves"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Beethoven_Symphony_No._5_1st_movement_Piano_solo.mxl",
+      "title": "Symphony No. 5 (Piano)",
+      "composer": "Ludwig van Beethoven",
+      "category": "advanced",
+      "complexity": 4,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "chords", "dynamics", "crescendo", "articulations", "multipleVoices"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "Chopin_-_Ballade_no._1_in_G_minor_Op._23.mxl",
+      "title": "Ballade No. 1 in G Minor",
+      "composer": "Frederic Chopin",
+      "category": "advanced",
+      "complexity": 5,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "slurs", "tuplets", "dynamics", "crescendo", "pedal", "ornaments", "multipleVoices", "meterChanges"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "La_Campanella.mxl",
+      "title": "La Campanella",
+      "composer": "Franz Liszt",
+      "category": "advanced",
+      "complexity": 5,
+      "expectedFeatures": ["pitchedNotes", "rests", "ties", "chords", "dynamics", "crescendo", "articulations", "ornaments", "multipleVoices", "graceNotes"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": null,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "drum_kit.musicxml",
+      "title": "Drum Kit Test",
+      "composer": null,
+      "category": "percussion",
+      "complexity": 2,
+      "expectedFeatures": ["unpitchedNotes", "rests", "chords", "percussion", "multipleVoices"],
+      "knownLimitations": [],
+      "expectedPartCount": 1,
+      "expectedMeasureCount": 2,
+      "expectedNoteCount": null
+    },
+    {
+      "filename": "w3c_percussion_tutorial.musicxml",
+      "title": "W3C Percussion Tutorial",
+      "composer": null,
+      "category": "percussion",
+      "complexity": 3,
+      "expectedFeatures": ["unpitchedNotes", "rests", "chords", "percussion", "multipleVoices", "multipleParts", "beams"],
+      "knownLimitations": [],
+      "expectedPartCount": 2,
+      "expectedMeasureCount": 2,
+      "expectedNoteCount": null
+    }
+  ]
+}

@@ -1,0 +1,315 @@
+@Tutorial(time: 25) {
+    @Intro(title: "Adding Playback") {
+        Add MIDI playback to your music notation app with play/pause controls and a visual cursor.
+
+        In this tutorial, you'll integrate the `PlaybackEngine` to add audio playback to your score viewer. You'll build playback controls, display the current position, and create a visual cursor that follows along with the music.
+
+        @Image(source: "adding-playback-intro.png", alt: "A score with playback controls and a cursor highlighting the current measure")
+    }
+
+    @Section(title: "Setting Up the Playback Engine") {
+        @ContentAndMedia {
+            Initialize the PlaybackEngine and load a score for playback.
+
+            The `PlaybackEngine` coordinates MIDI playback using AVFoundation. It converts the score to timed MIDI events and synthesizes audio through the built-in General MIDI sound bank.
+
+            @Image(source: "section1-playback-engine.png", alt: "Diagram of PlaybackEngine architecture")
+        }
+
+        @Steps {
+            @Step {
+                Start with the basic score viewer from the previous tutorials. We'll add playback functionality to this view.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-01.swift")
+            }
+
+            @Step {
+                Add a `PlaybackEngine` as a `@StateObject`. This creates the engine once when the view is first created and preserves it across view updates.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-02.swift")
+            }
+
+            @Step {
+                Load the score into the playback engine after importing. The `load(_:)` method is async because it initializes the MIDI synthesizer.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-03.swift")
+            }
+
+            @Step {
+                Handle loading errors gracefully. The engine can fail to load if the sound bank is unavailable or if there's an audio system issue.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-04.swift")
+            }
+        }
+    }
+
+    @Section(title: "Building Playback Controls") {
+        @ContentAndMedia {
+            Create an intuitive control interface for play, pause, and stop.
+
+            `PlaybackEngine` is an `ObservableObject` with `@Published` properties, making it easy to build reactive SwiftUI controls. The `state` property tells you whether playback is stopped, playing, or paused.
+
+            @Image(source: "section2-controls.png", alt: "Playback controls showing play, pause, and stop buttons")
+        }
+
+        @Steps {
+            @Step {
+                Add a simple play/pause button that toggles based on the engine's state.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-05.swift")
+            }
+
+            @Step {
+                Add a stop button and organize the controls in a toolbar.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-06.swift")
+            }
+
+            @Step {
+                Extract the playback controls into a separate view for cleaner code.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-01.swift")
+            }
+
+            @Step {
+                Add navigation controls to skip between measures.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-02.swift")
+            }
+
+            @Step {
+                Add a tempo slider to let users adjust playback speed.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-03.swift")
+            }
+        }
+    }
+
+    @Section(title: "Displaying Position Information") {
+        @ContentAndMedia {
+            Show the current playback position with measure and beat indicators.
+
+            The `currentPosition` property updates continuously during playback, providing measure number, beat, and elapsed time. Use this to show the user where they are in the score.
+
+            @Image(source: "section3-position.png", alt: "A display showing current measure, beat, and time")
+        }
+
+        @Steps {
+            @Step {
+                Display the current measure and beat in the UI.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-04.swift")
+            }
+
+            @Step {
+                Add elapsed time display formatted as minutes:seconds.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-05.swift")
+            }
+
+            @Step {
+                Create a progress bar showing position within the score.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-06.swift")
+            }
+
+            @Step {
+                Make the progress bar interactive so users can seek by tapping or dragging.
+
+                @Code(name: "PlaybackControls.swift", file: "Playback-Controls-07.swift")
+            }
+        }
+    }
+
+    @Section(title: "Creating a Visual Cursor") {
+        @ContentAndMedia {
+            Highlight the current playback position on the rendered score.
+
+            Use the `events` publisher to receive position updates and highlight the corresponding measure or beat in the score view. This visual feedback helps users follow along with the music.
+
+            @Image(source: "section4-cursor.png", alt: "A score with a highlighted measure showing the playback cursor")
+        }
+
+        @Steps {
+            @Step {
+                Subscribe to playback events using Combine.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-07.swift")
+            }
+
+            @Step {
+                Track the highlighted measure using state and pass it to the score view.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-08.swift")
+            }
+
+            @Step {
+                Create a measure highlight overlay that draws on top of the score.
+
+                @Code(name: "MeasureHighlight.swift", file: "Playback-Highlight-01.swift")
+            }
+
+            @Step {
+                Add smooth animations when the cursor moves between measures.
+
+                @Code(name: "MeasureHighlight.swift", file: "Playback-Highlight-02.swift")
+            }
+
+            @Step {
+                Auto-scroll the view to keep the current measure visible.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-09.swift")
+            }
+        }
+    }
+
+    @Section(title: "Controlling Part Volumes") {
+        @ContentAndMedia {
+            Add mixer controls to adjust individual part volumes.
+
+            The `PlaybackEngine` allows you to control volume for each part independently. This is useful for practicing along with the music—you can mute your own part or reduce accompaniment volume.
+
+            @Image(source: "section5-mixer.png", alt: "A mixer interface with volume sliders for each part")
+        }
+
+        @Steps {
+            @Step {
+                Create a mixer view that shows all parts in the score.
+
+                @Code(name: "MixerView.swift", file: "Playback-Mixer-01.swift")
+            }
+
+            @Step {
+                Add volume sliders for each part.
+
+                @Code(name: "MixerView.swift", file: "Playback-Mixer-02.swift")
+            }
+
+            @Step {
+                Add mute/solo buttons for quick part isolation.
+
+                @Code(name: "MixerView.swift", file: "Playback-Mixer-03.swift")
+            }
+
+            @Step {
+                Add a master volume control and integrate the mixer into the main view.
+
+                @Code(name: "ContentView.swift", file: "Playback-ContentView-10.swift")
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            What Swift concurrency feature is required to load a score into the PlaybackEngine?
+
+            @Choice(isCorrect: false) {
+                A completion handler
+
+                @Justification(reaction: "Not quite!") {
+                    The `load(_:)` method uses Swift's modern async/await syntax, not completion handlers.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                `async`/`await`
+
+                @Justification(reaction: "Correct!") {
+                    The `load(_:)` method is marked `async` because it initializes the MIDI synthesizer, which may take time to load the sound bank.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                A dispatch queue
+
+                @Justification(reaction: "Not quite!") {
+                    While dispatch queues can handle async work, `PlaybackEngine.load(_:)` uses Swift's native async/await.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            Which property wrapper should you use for the PlaybackEngine in a SwiftUI view?
+
+            @Choice(isCorrect: true) {
+                `@StateObject`
+
+                @Justification(reaction: "Correct!") {
+                    `@StateObject` creates the engine once and preserves it across view updates. This is important because the engine maintains playback state.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `@State`
+
+                @Justification(reaction: "Not quite!") {
+                    `@State` is for value types. `PlaybackEngine` is a reference type (class) that should use `@StateObject`.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `@ObservedObject`
+
+                @Justification(reaction: "Close!") {
+                    `@ObservedObject` works for observing but doesn't own the object. Use `@StateObject` when the view creates and owns the engine.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            How do you receive playback events from the engine?
+
+            @Choice(isCorrect: false) {
+                By implementing a delegate protocol
+
+                @Justification(reaction: "Not quite!") {
+                    `PlaybackEngine` doesn't use the delegate pattern. It uses Combine publishers.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                By observing the `currentPosition` property
+
+                @Justification(reaction: "Partially correct!") {
+                    While you can observe `currentPosition`, detailed events like started/stopped come through the `events` publisher.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                By subscribing to the `events` Combine publisher
+
+                @Justification(reaction: "Correct!") {
+                    The `events` property is a Combine publisher that emits `PlaybackEvent` values for state changes, position updates, and errors.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            What does `PlaybackPosition.beat` represent?
+
+            @Choice(isCorrect: false) {
+                The number of beats since playback started
+
+                @Justification(reaction: "Not quite!") {
+                    That would be a cumulative count. `beat` is the position within the current measure.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                The 1-based beat position within the current measure
+
+                @Justification(reaction: "Correct!") {
+                    `beat` starts at 1.0 for the first beat and can have fractional values for positions between beats.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                The tempo in beats per minute
+
+                @Justification(reaction: "Not quite!") {
+                    The tempo is controlled by `PlaybackEngine.tempo`, not by `PlaybackPosition.beat`.
+                }
+            }
+        }
+    }
+}

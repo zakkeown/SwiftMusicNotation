@@ -1,0 +1,195 @@
+@Tutorial(time: 20) {
+    @Intro(title: "Exporting Scores") {
+        Export music scores to MusicXML files and images for sharing and printing.
+
+        In this tutorial, you'll learn how to export scores to MusicXML format for interoperability with other notation software, and how to generate PDF and image files for printing and sharing.
+
+        @Image(source: "exporting-scores-intro.png", alt: "A score being exported to various formats including MusicXML, PDF, and PNG")
+    }
+
+    @Section(title: "Exporting to MusicXML") {
+        @ContentAndMedia {
+            Save scores in the universal MusicXML format.
+
+            MusicXML is the standard interchange format for music notation, supported by virtually all notation software including Finale, Sibelius, MuseScore, and Dorico. Exporting to MusicXML allows users to share and edit scores in any application.
+
+            @Image(source: "section1-musicxml.png", alt: "MusicXML file icon with notation software logos")
+        }
+
+        @Steps {
+            @Step {
+                Start with an app that loads and displays scores. We'll add export functionality to save scores back to MusicXML.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-01.swift")
+            }
+
+            @Step {
+                Add the MusicXMLExport import and create an export action. We'll use `MusicXMLExporter` to convert the score to MusicXML format.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-02.swift")
+            }
+
+            @Step {
+                Implement the export function to save to the Documents directory. The exporter handles all the conversion from `Score` to valid MusicXML.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-03.swift")
+            }
+
+            @Step {
+                Add error handling for the export operation. The exporter can throw errors for encoding issues or file write failures.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-04.swift")
+            }
+
+            @Step {
+                Configure the exporter with custom options. `ExportConfiguration` lets you control the MusicXML version and other output settings.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-05.swift")
+            }
+        }
+    }
+
+    @Section(title: "Configuring MusicXML Output") {
+        @ContentAndMedia {
+            Customize the MusicXML export to meet your needs.
+
+            `ExportConfiguration` provides options for compatibility, encoding, and metadata. Understanding these options helps ensure your exports work well with target applications.
+
+            @Image(source: "section2-config.png", alt: "Export configuration options panel")
+        }
+
+        @Steps {
+            @Step {
+                Create a reusable export configuration. The default settings work well for most cases, but you can customize them for specific requirements.
+
+                @Code(name: "ExportConfig.swift", file: "Export-Config-01.swift")
+            }
+
+            @Step {
+                Add presets for common export scenarios. Different target applications may work better with different settings.
+
+                @Code(name: "ExportConfig.swift", file: "Export-Config-02.swift")
+            }
+
+            @Step {
+                Build a settings UI that lets users choose export options. This gives users control over how their files are exported.
+
+                @Code(name: "ExportSettingsView.swift", file: "Export-Settings-01.swift")
+            }
+
+            @Step {
+                Connect the settings to the export action. Apply the user's preferences when performing the export.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-06.swift")
+            }
+        }
+    }
+
+    @Section(title: "Exporting to PDF") {
+        @ContentAndMedia {
+            Generate print-ready PDF documents from your scores.
+
+            PDF export creates high-quality documents suitable for printing or digital distribution. The `ExportEngine` renders all pages with proper pagination and formatting.
+
+            @Image(source: "section3-pdf.png", alt: "A multi-page PDF document showing a music score")
+        }
+
+        @Steps {
+            @Step {
+                Add PDF export capability to your app. Import MusicNotationRenderer which contains the `ExportEngine`.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-07.swift")
+            }
+
+            @Step {
+                Implement the PDF export function. The `ExportEngine` takes an engraved score and renders it to a multi-page PDF.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-08.swift")
+            }
+
+            @Step {
+                Add a share sheet to let users save or share the PDF. On iOS, use `UIActivityViewController`; on macOS, use `NSSavePanel`.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-09.swift")
+            }
+
+            @Step {
+                Customize PDF appearance with export configuration. Control colors, staff size, and other visual properties.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-10.swift")
+            }
+        }
+    }
+
+    @Section(title: "Exporting to Images") {
+        @ContentAndMedia {
+            Create PNG and JPEG images of score pages.
+
+            Image export is useful for sharing on social media, embedding in documents, or creating thumbnails. You can control the resolution and quality of the output.
+
+            @Image(source: "section4-images.png", alt: "Score page exported as a PNG image")
+        }
+
+        @Steps {
+            @Step {
+                Add PNG export for individual pages. PNG supports transparency and lossless compression, making it ideal for high-quality images.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-11.swift")
+            }
+
+            @Step {
+                Add JPEG export for smaller file sizes. JPEG is better for photos and situations where file size matters more than perfect quality.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-12.swift")
+            }
+
+            @Step {
+                Create an export panel that lets users choose format and settings. Provide options for format, page selection, and resolution.
+
+                @Code(name: "ExportPanel.swift", file: "Export-Panel-01.swift")
+            }
+
+            @Step {
+                Add batch export to save all pages as images. This is useful for creating image sequences or thumbnails of an entire score.
+
+                @Code(name: "ExportPanel.swift", file: "Export-Panel-02.swift")
+            }
+        }
+    }
+
+    @Section(title: "Building a Complete Export Menu") {
+        @ContentAndMedia {
+            Combine all export options into a polished user interface.
+
+            A well-designed export menu makes it easy for users to share their work in whatever format they need. We'll create a comprehensive export system that handles all the formats we've covered.
+
+            @Image(source: "section5-menu.png", alt: "Export menu showing MusicXML, PDF, and image options")
+        }
+
+        @Steps {
+            @Step {
+                Create an export manager class that coordinates all export operations. This centralizes the export logic and makes it reusable.
+
+                @Code(name: "ExportManager.swift", file: "Export-Manager-01.swift")
+            }
+
+            @Step {
+                Add progress tracking for long export operations. PDF and batch image exports can take time, so showing progress improves the user experience.
+
+                @Code(name: "ExportManager.swift", file: "Export-Manager-02.swift")
+            }
+
+            @Step {
+                Build the final export menu with all options. Users can quickly choose their preferred format or access advanced settings.
+
+                @Code(name: "ExportMenu.swift", file: "Export-Menu-01.swift")
+            }
+
+            @Step {
+                Integrate the export menu into the main app toolbar. The export functionality is now easily accessible from anywhere in the app.
+
+                @Code(name: "ContentView.swift", file: "Export-ContentView-13.swift")
+            }
+        }
+    }
+}

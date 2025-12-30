@@ -1,0 +1,31 @@
+@Tutorials(name: "SwiftMusicNotation") {
+    @Intro(title: "Meet SwiftMusicNotation") {
+        Learn how to use SwiftMusicNotation to display, interact with, and play back professional music notation in your Swift apps.
+
+        SwiftMusicNotation provides a complete toolkit for working with musical scores—from importing MusicXML files to rendering publication-quality notation and adding MIDI playback.
+    }
+
+    @Chapter(name: "SwiftMusicNotation Essentials") {
+        Get started by displaying your first musical score. You'll learn how to import MusicXML, configure layout, and integrate with SwiftUI.
+
+        @Image(source: "chapter1-hero.png", alt: "A rendered musical score showing a simple melody")
+
+        @TutorialReference(tutorial: "doc:DisplayingAScore")
+    }
+
+    @Chapter(name: "Customizing Appearance") {
+        Learn how to customize the look of your scores with SMuFL fonts, colors, and layout configuration.
+
+        @Image(source: "chapter2-hero.png", alt: "A score with custom styling")
+
+        @TutorialReference(tutorial: "doc:CustomizingAppearance")
+    }
+
+    @Chapter(name: "Adding Playback") {
+        Add MIDI playback to your app with the PlaybackEngine. Implement play/pause controls and visual cursor tracking.
+
+        @Image(source: "chapter3-hero.png", alt: "A score with playback controls")
+
+        @TutorialReference(tutorial: "doc:AddingPlayback")
+    }
+}

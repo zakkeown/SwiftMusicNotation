@@ -1,0 +1,87 @@
+import SwiftUI
+import SwiftMusicNotation
+
+struct PlaybackControls: View {
+    @ObservedObject var engine: PlaybackEngine
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Position display
+            HStack {
+                // Measure indicator
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Measure")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(engine.currentPosition.measure)")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                }
+
+                Spacer()
+
+                // Beat indicator
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Beat")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1f", engine.currentPosition.beat))
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                }
+            }
+            .frame(maxWidth: 200)
+
+            Divider()
+
+            // Transport controls
+            HStack(spacing: 16) {
+                Button { try? engine.previousMeasure() } label: {
+                    Image(systemName: "backward.end.fill").font(.title3)
+                }
+                .disabled(!engine.isLoaded)
+
+                Button { engine.stop() } label: {
+                    Image(systemName: "stop.fill").font(.title2)
+                }
+                .disabled(engine.state == .stopped)
+
+                Button { togglePlayback() } label: {
+                    Image(systemName: engine.state == .playing ? "pause.fill" : "play.fill").font(.title)
+                }
+                .disabled(!engine.isLoaded)
+                .buttonStyle(.borderedProminent)
+
+                Button { try? engine.nextMeasure() } label: {
+                    Image(systemName: "forward.end.fill").font(.title3)
+                }
+                .disabled(!engine.isLoaded)
+            }
+
+            // Tempo control
+            HStack {
+                Image(systemName: "metronome")
+                    .foregroundStyle(.secondary)
+                Slider(value: $engine.tempo, in: 40...240, step: 1)
+                    .frame(width: 150)
+                    .disabled(!engine.isLoaded)
+                Text("\(Int(engine.tempo)) BPM")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .frame(width: 60, alignment: .trailing)
+            }
+        }
+        .padding()
+    }
+
+    private func togglePlayback() {
+        do {
+            if engine.state == .playing { engine.pause() }
+            else { try engine.play() }
+        } catch {
+            print("Playback error: \(error)")
+        }
+    }
+}

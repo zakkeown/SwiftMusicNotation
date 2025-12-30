@@ -1,0 +1,5 @@
+import SwiftMusicNotation
+
+struct ScoreLoader {
+
+}

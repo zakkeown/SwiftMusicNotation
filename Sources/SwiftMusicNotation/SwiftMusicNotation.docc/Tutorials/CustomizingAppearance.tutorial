@@ -1,0 +1,303 @@
+@Tutorial(time: 25) {
+    @Intro(title: "Customizing Appearance") {
+        Learn how to customize the look of your scores with SMuFL fonts, colors, and layout configuration.
+
+        In this tutorial, you'll explore the customization options available in SwiftMusicNotation. You'll learn how to load different SMuFL fonts, adjust colors for light and dark mode support, and fine-tune spacing and layout parameters.
+
+        @Image(source: "customizing-appearance-intro.png", alt: "Multiple scores showing different visual styles")
+    }
+
+    @Section(title: "Loading SMuFL Fonts") {
+        @ContentAndMedia {
+            Discover how to load and switch between SMuFL-compliant music notation fonts.
+
+            SMuFL (Standard Music Font Layout) is the industry standard for music notation fonts. SwiftMusicNotation supports any SMuFL-compliant font, allowing you to customize the look of your notation.
+
+            @Image(source: "section1-fonts.png", alt: "Comparison of different SMuFL fonts")
+        }
+
+        @Steps {
+            @Step {
+                Start with a basic score display setup. We'll build on the ContentView from the previous tutorial.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-01.swift")
+            }
+
+            @Step {
+                Add font loading code using `SMuFLFontManager`. The manager handles loading fonts from your app bundle and caching them for reuse.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-02.swift")
+            }
+
+            @Step {
+                To use a different font, first add the font files (`.otf` and metadata JSON) to your project. Then load the font by name. Popular SMuFL fonts include Bravura (bundled), Petaluma, Leland, and Finale Maestro.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-03.swift")
+            }
+
+            @Step {
+                Add a font picker to let users choose their preferred notation font. Store the selection in user preferences.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-04.swift")
+            }
+
+            @Step {
+                Update the renderer when the font changes. The `SMuFLFontManager.shared.currentFont` property provides the loaded font for rendering.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-05.swift")
+            }
+        }
+    }
+
+    @Section(title: "Configuring Colors") {
+        @ContentAndMedia {
+            Customize notation colors for different themes and visual preferences.
+
+            `RenderConfiguration` controls all visual aspects of rendered notation, including colors for notes, staff lines, and backgrounds. You can create presets for light mode, dark mode, or custom color schemes.
+
+            @Image(source: "section2-colors.png", alt: "A score in dark mode with light notation")
+        }
+
+        @Steps {
+            @Step {
+                Create a `RenderConfiguration` to customize colors. The default configuration provides standard black-on-white engraving.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-06.swift")
+            }
+
+            @Step {
+                Create a dark mode configuration by inverting the colors. Set a dark background and light notation elements.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-07.swift")
+            }
+
+            @Step {
+                Use SwiftUI's `@Environment(\.colorScheme)` to automatically switch between light and dark configurations.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-08.swift")
+            }
+
+            @Step {
+                Customize individual element colors for creative effects or accessibility. You can set different colors for staff lines, notes, and barlines.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-09.swift")
+            }
+
+            @Step {
+                Adjust line thicknesses for different display sizes or print resolutions. Thicker lines are more visible on screens; thinner lines are better for print.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-10.swift")
+            }
+        }
+    }
+
+    @Section(title: "Adjusting Layout") {
+        @ContentAndMedia {
+            Fine-tune spacing, margins, and page layout for your specific needs.
+
+            `LayoutConfiguration` controls horizontal and vertical spacing, while `LayoutContext` defines page dimensions and staff size. Together, they determine how music is distributed across pages.
+
+            @Image(source: "section3-layout.png", alt: "Diagram showing layout configuration options")
+        }
+
+        @Steps {
+            @Step {
+                Start with `LayoutContext` to set page size and staff height. The `letterSize` and `a4Size` factory methods provide common presets.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-11.swift")
+            }
+
+            @Step {
+                Create a custom layout context for non-standard sizes. Specify exact page dimensions, margins, and staff height.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-12.swift")
+            }
+
+            @Step {
+                Use `LayoutConfiguration` to adjust spacing between notes. The `spacingFactor` controls how much duration affects spacing—higher values create more contrast between short and long notes.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-13.swift")
+            }
+
+            @Step {
+                Configure vertical spacing between staves and systems. Increase spacing for parts that need more room for lyrics or articulations.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-14.swift")
+            }
+
+            @Step {
+                Create preset configurations for different use cases—screen display, print, and dense scores.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-15.swift")
+            }
+        }
+    }
+
+    @Section(title: "Creating a Settings View") {
+        @ContentAndMedia {
+            Build a comprehensive settings interface for all appearance options.
+
+            Combine all the customization options into a user-friendly settings view. Users can adjust fonts, colors, and layout to match their preferences.
+
+            @Image(source: "section4-settings.png", alt: "A settings panel with appearance options")
+        }
+
+        @Steps {
+            @Step {
+                Create an `AppearanceSettings` observable object to store all customization options.
+
+                @Code(name: "AppearanceSettings.swift", file: "Appearance-Settings-01.swift")
+            }
+
+            @Step {
+                Add computed properties that generate `RenderConfiguration` and `LayoutConfiguration` from the stored settings.
+
+                @Code(name: "AppearanceSettings.swift", file: "Appearance-Settings-02.swift")
+            }
+
+            @Step {
+                Create a settings view with sections for each category of options.
+
+                @Code(name: "SettingsView.swift", file: "Appearance-SettingsView-01.swift")
+            }
+
+            @Step {
+                Add the font selection section with a picker for available fonts.
+
+                @Code(name: "SettingsView.swift", file: "Appearance-SettingsView-02.swift")
+            }
+
+            @Step {
+                Add the color scheme section with color pickers and presets.
+
+                @Code(name: "SettingsView.swift", file: "Appearance-SettingsView-03.swift")
+            }
+
+            @Step {
+                Add the layout section with sliders for spacing adjustments.
+
+                @Code(name: "SettingsView.swift", file: "Appearance-SettingsView-04.swift")
+            }
+
+            @Step {
+                Connect the settings to your main view and see the changes in real time.
+
+                @Code(name: "ContentView.swift", file: "Appearance-ContentView-16.swift")
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            What is SMuFL?
+
+            @Choice(isCorrect: false) {
+                A file format for storing music notation
+
+                @Justification(reaction: "Not quite!") {
+                    SMuFL is not a file format. MusicXML is the standard file format for music notation interchange.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                A standard for music notation fonts that ensures consistent glyph naming and positioning
+
+                @Justification(reaction: "Correct!") {
+                    SMuFL (Standard Music Font Layout) defines standardized glyph names, Unicode code points, and metadata for music notation fonts. This ensures fonts are interchangeable.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                A rendering engine for music notation
+
+                @Justification(reaction: "Not quite!") {
+                    SMuFL is a font standard, not a rendering engine. SwiftMusicNotation's `MusicRenderer` is the rendering engine.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            Which type controls colors and line thicknesses for rendering?
+
+            @Choice(isCorrect: true) {
+                `RenderConfiguration`
+
+                @Justification(reaction: "Correct!") {
+                    `RenderConfiguration` contains properties for background color, note color, staff line color, and various line thicknesses.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `LayoutConfiguration`
+
+                @Justification(reaction: "Not quite!") {
+                    `LayoutConfiguration` controls spacing and dimensions, not colors. Use `RenderConfiguration` for visual appearance.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `LayoutContext`
+
+                @Justification(reaction: "Not quite!") {
+                    `LayoutContext` defines page size, margins, and staff height, but not colors or line thicknesses.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            How do you load a SMuFL font in SwiftMusicNotation?
+
+            @Choice(isCorrect: false) {
+                Using `UIFont` or `NSFont` system APIs
+
+                @Justification(reaction: "Not quite!") {
+                    While SMuFL fonts are system fonts, SwiftMusicNotation uses `SMuFLFontManager` to load them with their metadata.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Using `SMuFLFontManager.shared.loadFont(named:from:)`
+
+                @Justification(reaction: "Correct!") {
+                    `SMuFLFontManager` handles loading SMuFL fonts along with their metadata (bounding boxes, anchors, engraving defaults).
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                Using `Bundle.main.url(forResource:withExtension:)`
+
+                @Justification(reaction: "Not quite!") {
+                    While you can locate font files this way, `SMuFLFontManager` is the proper API for loading SMuFL fonts with full metadata support.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            What does the `spacingFactor` in `SpacingConfiguration` control?
+
+            @Choice(isCorrect: false) {
+                The minimum distance between any two notes
+
+                @Justification(reaction: "Not quite!") {
+                    The minimum distance is controlled by `minimumNoteSpacing`. The `spacingFactor` affects proportional spacing.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                How much note duration affects horizontal spacing (logarithmic scaling)
+
+                @Justification(reaction: "Correct!") {
+                    The `spacingFactor` controls logarithmic spacing. Higher values create more visual contrast between short and long note durations.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                The distance between staff lines
+
+                @Justification(reaction: "Not quite!") {
+                    Staff line distance is determined by `staffHeight` in `LayoutContext`, not `spacingFactor`.
+                }
+            }
+        }
+    }
+}

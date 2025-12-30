@@ -1,0 +1,283 @@
+@Tutorial(time: 30) {
+    @Intro(title: "Displaying Your First Score") {
+        Learn how to import a MusicXML file and display professional music notation in your Swift app.
+
+        In this tutorial, you'll build a simple app that loads a MusicXML file, computes layout for the score, and displays it using SwiftUI. By the end, you'll have an interactive score view with zoom and selection support.
+
+        @Image(source: "displaying-score-intro.png", alt: "A SwiftUI app displaying rendered music notation")
+    }
+
+    @Section(title: "Setting Up Your Project") {
+        @ContentAndMedia {
+            Create a new Xcode project and add SwiftMusicNotation as a dependency.
+
+            You'll set up a SwiftUI app that's ready to display music notation on macOS or iOS.
+
+            @Image(source: "section1-setup.png", alt: "Xcode project navigator showing the app structure")
+        }
+
+        @Steps {
+            @Step {
+                Create a new Xcode project. Choose **App** under the multiplatform tab, then click **Next**.
+
+                @Image(source: "step1-1-new-project.png", alt: "Xcode new project dialog")
+            }
+
+            @Step {
+                Name your project "ScoreViewer" and ensure **SwiftUI** is selected for the interface. Click **Next** and choose a location to save your project.
+
+                @Image(source: "step1-2-project-name.png", alt: "Xcode project naming dialog")
+            }
+
+            @Step {
+                Add SwiftMusicNotation as a package dependency. Select your project in the navigator, go to **Package Dependencies**, and click the **+** button.
+
+                @Image(source: "step1-3-add-dependency.png", alt: "Xcode package dependencies tab")
+            }
+
+            @Step {
+                Enter the SwiftMusicNotation repository URL and click **Add Package**. Xcode will fetch the package and its dependencies.
+
+                @Code(name: "Package URL", file: "step1-4-package-url.txt")
+            }
+
+            @Step {
+                Select all the library products you want to add to your target. For this tutorial, select **SwiftMusicNotation** (the umbrella module) which includes all functionality.
+
+                @Image(source: "step1-5-select-products.png", alt: "Xcode package product selection")
+            }
+
+            @Step {
+                Your project is now set up with SwiftMusicNotation. You should see the package listed under **Package Dependencies** in the navigator.
+
+                @Image(source: "step1-6-project-ready.png", alt: "Xcode navigator showing SwiftMusicNotation package")
+            }
+        }
+    }
+
+    @Section(title: "Loading a MusicXML File") {
+        @ContentAndMedia {
+            Import a MusicXML file and convert it to a Score object that the library can work with.
+
+            MusicXML is the standard format for exchanging music notation between applications. SwiftMusicNotation's `MusicXMLImporter` handles both uncompressed `.musicxml` files and compressed `.mxl` archives.
+
+            @Image(source: "section2-musicxml.png", alt: "Diagram showing MusicXML being imported into a Score object")
+        }
+
+        @Steps {
+            @Step {
+                Add a MusicXML file to your project. You can download sample files from musicxml.com or export from notation software like MuseScore, Finale, or Sibelius.
+
+                Drag the file into your Xcode project navigator and ensure "Copy items if needed" is checked.
+
+                @Image(source: "step2-1-add-musicxml.png", alt: "Xcode file import dialog")
+            }
+
+            @Step {
+                Create a new Swift file called `ScoreLoader.swift`. This will contain the logic for loading MusicXML files.
+
+                @Code(name: "ScoreLoader.swift", file: "ScoreLoader-01.swift")
+            }
+
+            @Step {
+                Add a method to load a MusicXML file from the app bundle. The `MusicXMLImporter` automatically detects whether the file is compressed or uncompressed.
+
+                @Code(name: "ScoreLoader.swift", file: "ScoreLoader-02.swift")
+            }
+
+            @Step {
+                Add error handling to provide meaningful feedback if the import fails. The importer throws `MusicXMLImportError` with details about what went wrong.
+
+                @Code(name: "ScoreLoader.swift", file: "ScoreLoader-03.swift")
+            }
+
+            @Step {
+                Make the loader observable so SwiftUI can react to changes. Use `@Observable` (iOS 17+/macOS 14+) or `ObservableObject` for older platforms.
+
+                @Code(name: "ScoreLoader.swift", file: "ScoreLoader-04.swift")
+            }
+        }
+    }
+
+    @Section(title: "Displaying the Score") {
+        @ContentAndMedia {
+            Configure the layout engine and display the score using SwiftUI.
+
+            The layout process transforms a `Score` into an `EngravedScore` with precise positions for every notation element. You'll configure the page size, margins, and staff height using a `LayoutContext`.
+
+            @Image(source: "section3-layout.png", alt: "Diagram showing the layout pipeline from Score to rendered view")
+        }
+
+        @Steps {
+            @Step {
+                Open `ContentView.swift` and import SwiftMusicNotation at the top of the file.
+
+                @Code(name: "ContentView.swift", file: "ContentView-01.swift")
+            }
+
+            @Step {
+                Add a `ScoreLoader` instance and a `LayoutContext` to configure how the score will be laid out. The `letterSize` factory method creates a context for US Letter paper dimensions.
+
+                @Code(name: "ContentView.swift", file: "ContentView-02.swift")
+            }
+
+            @Step {
+                Add the `ScoreViewRepresentable` to display the score. This SwiftUI view wraps platform-native scroll views and handles rendering.
+
+                @Code(name: "ContentView.swift", file: "ContentView-03.swift")
+            }
+
+            @Step {
+                Load the score when the view appears. Use a task to perform the async loading operation.
+
+                @Code(name: "ContentView.swift", file: "ContentView-04.swift")
+            }
+
+            @Step {
+                Add a loading state and error handling to improve the user experience. Show appropriate UI while the score loads or if an error occurs.
+
+                @Code(name: "ContentView.swift", file: "ContentView-05.swift")
+            }
+
+            @Step {
+                Run the app. You should see your MusicXML file rendered as professional music notation!
+
+                @Image(source: "step3-6-running-app.png", alt: "The running app showing rendered music notation")
+            }
+        }
+    }
+
+    @Section(title: "Adding Interactivity") {
+        @ContentAndMedia {
+            Enhance your score view with zoom controls, pan gestures, and element selection.
+
+            `ScoreViewRepresentable` supports pinch-to-zoom, scroll/pan gestures, and tap-to-select out of the box. You'll add UI controls and respond to user interactions.
+
+            @Image(source: "section4-interaction.png", alt: "A score with zoom controls and a selected note highlighted")
+        }
+
+        @Steps {
+            @Step {
+                Add state properties to track zoom level and selected elements. These bindings let you both read and control the view's state.
+
+                @Code(name: "ContentView.swift", file: "ContentView-06.swift")
+            }
+
+            @Step {
+                Connect the bindings to `ScoreViewRepresentable`. Now changes to `zoomLevel` will update the view, and user gestures will update the state.
+
+                @Code(name: "ContentView.swift", file: "ContentView-07.swift")
+            }
+
+            @Step {
+                Add zoom controls to the toolbar. Include buttons for zoom in, zoom out, and a label showing the current zoom percentage.
+
+                @Code(name: "ContentView.swift", file: "ContentView-08.swift")
+            }
+
+            @Step {
+                Add callbacks to respond to element taps. When a user taps a note, rest, or other element, you can show details or trigger actions like playback.
+
+                @Code(name: "ContentView.swift", file: "ContentView-09.swift")
+            }
+
+            @Step {
+                Display information about selected elements. Add a bottom bar that shows what the user has selected.
+
+                @Code(name: "ContentView.swift", file: "ContentView-10.swift")
+            }
+
+            @Step {
+                Run the app and try the interactions. Pinch or use the zoom buttons to zoom, scroll to pan, and tap elements to select them.
+
+                @Image(source: "step4-6-interactive-app.png", alt: "The app with zoom controls and a selected element")
+            }
+        }
+    }
+
+    @Assessments {
+        @MultipleChoice {
+            What class is responsible for parsing MusicXML files?
+
+            @Choice(isCorrect: false) {
+                `MusicXMLParser`
+
+                @Justification(reaction: "Try again!") {
+                    While this sounds like a reasonable name, the class is actually called `MusicXMLImporter`.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                `MusicXMLImporter`
+
+                @Justification(reaction: "Correct!") {
+                    `MusicXMLImporter` is the entry point for loading MusicXML files. It handles both `.musicxml` and compressed `.mxl` formats automatically.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `XMLScoreLoader`
+
+                @Justification(reaction: "Try again!") {
+                    This is not a class in SwiftMusicNotation. Look for `MusicXMLImporter`.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            What does `LayoutContext` configure?
+
+            @Choice(isCorrect: false) {
+                The font used for rendering musical symbols
+
+                @Justification(reaction: "Not quite!") {
+                    Fonts are loaded separately using `SMuFLFontManager`. `LayoutContext` handles page dimensions and spacing.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                Page size, margins, and staff height for layout computation
+
+                @Justification(reaction: "Correct!") {
+                    `LayoutContext` defines the canvas dimensions, margins, and the base staff height that determines the size of all notation elements.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                The color scheme for notation elements
+
+                @Justification(reaction: "Not quite!") {
+                    Colors are configured using `RenderConfiguration`, not `LayoutContext`.
+                }
+            }
+        }
+
+        @MultipleChoice {
+            Which SwiftUI view displays rendered music notation?
+
+            @Choice(isCorrect: false) {
+                `MusicSheetView`
+
+                @Justification(reaction: "Try again!") {
+                    This view doesn't exist in SwiftMusicNotation. The correct view is `ScoreViewRepresentable`.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+                `NotationView`
+
+                @Justification(reaction: "Try again!") {
+                    While descriptive, this isn't the actual view name. Use `ScoreViewRepresentable`.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                `ScoreViewRepresentable`
+
+                @Justification(reaction: "Correct!") {
+                    `ScoreViewRepresentable` is the SwiftUI view that wraps platform-native scroll views and provides bindings for zoom, selection, and interaction callbacks.
+                }
+            }
+        }
+    }
+}
