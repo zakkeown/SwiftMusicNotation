@@ -138,6 +138,9 @@ public final class SMuFLFontManager: @unchecked Sendable {
     /// ```
     @discardableResult
     public func loadFont(named fontName: String, from bundle: Bundle = .main) throws -> LoadedSMuFLFont {
+        // Validate font name before any file operations
+        try validateFontName(fontName)
+
         lock.lock()
         defer { lock.unlock() }
 
@@ -232,10 +235,37 @@ public final class SMuFLFontManager: @unchecked Sendable {
 
     // MARK: - Private Methods
 
+    /// Maximum allowed size for metadata files (10 MB).
+    private static let maxMetadataFileSize: Int = 10 * 1024 * 1024
+
     private func loadMetadata(from url: URL) throws -> SMuFLFontMetadata {
+        // Check file size before loading to prevent DoS
+        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+        if let fileSize = attributes[.size] as? Int, fileSize > Self.maxMetadataFileSize {
+            throw SMuFLFontError.metadataFileTooLarge(url.lastPathComponent, fileSize)
+        }
+
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
         return try decoder.decode(SMuFLFontMetadata.self, from: data)
+    }
+
+    /// Validates that a font name doesn't contain path traversal attempts.
+    private func validateFontName(_ fontName: String) throws {
+        // Check for path separators
+        if fontName.contains("/") || fontName.contains("\\") {
+            throw SMuFLFontError.invalidFontName(fontName)
+        }
+
+        // Check for path traversal
+        if fontName.contains("..") {
+            throw SMuFLFontError.invalidFontName(fontName)
+        }
+
+        // Check for empty or whitespace-only names
+        if fontName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            throw SMuFLFontError.invalidFontName(fontName)
+        }
     }
 }
 
@@ -561,6 +591,10 @@ public enum SMuFLFontError: LocalizedError {
     case fontNotLoaded(String)
     /// A specific glyph was requested but doesn't exist in the font.
     case glyphNotFound(SMuFLGlyphName)
+    /// The font name contains invalid characters (path separators, traversal).
+    case invalidFontName(String)
+    /// The metadata file exceeds the maximum allowed size.
+    case metadataFileTooLarge(String, Int)
 
     public var errorDescription: String? {
         switch self {
@@ -579,6 +613,10 @@ public enum SMuFLFontError: LocalizedError {
             return "Font not loaded: \(name)"
         case .glyphNotFound(let glyph):
             return "Glyph not found: \(glyph.rawValue)"
+        case .invalidFontName(let name):
+            return "Invalid font name: \(name)"
+        case .metadataFileTooLarge(let name, let size):
+            return "Metadata file '\(name)' is too large (\(size) bytes)"
         }
     }
 }

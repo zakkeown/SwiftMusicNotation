@@ -2,42 +2,49 @@ import Foundation
 import MusicNotationCore
 
 /// Shared context during XML parsing.
+///
+/// This class maintains parsing state and is passed through the import pipeline.
+/// While public for advanced customization scenarios, the mutable properties are
+/// primarily intended for internal use by the parser.
+///
+/// - Important: External code should treat this as read-only except when implementing
+///   custom parsing logic. Modifying state incorrectly can lead to parsing errors.
 public final class XMLParserContext {
     /// Current divisions value (duration units per quarter note).
-    public var divisions: Int = 1
+    public internal(set) var divisions: Int = 1
 
     /// Current part being parsed.
-    public var currentPartId: String?
+    public internal(set) var currentPartId: String?
 
     /// Current measure number.
-    public var currentMeasureNumber: String?
+    public internal(set) var currentMeasureNumber: String?
 
     /// Current staff number (1-based).
-    public var currentStaff: Int = 1
+    public internal(set) var currentStaff: Int = 1
 
     /// Current voice number.
-    public var currentVoice: Int = 1
+    public internal(set) var currentVoice: Int = 1
 
     /// Active attributes (clef, key, time) by staff.
-    public var activeAttributes: [Int: ActiveMeasureAttributes] = [:]
+    public internal(set) var activeAttributes: [Int: ActiveMeasureAttributes] = [:]
 
     /// Accumulated warnings during parsing.
     public private(set) var warnings: [MusicXMLWarning] = []
 
     /// Part name lookup by ID.
-    public var partNames: [String: String] = [:]
+    public internal(set) var partNames: [String: String] = [:]
 
     /// Part abbreviations by ID.
-    public var partAbbreviations: [String: String] = [:]
+    public internal(set) var partAbbreviations: [String: String] = [:]
 
     /// Staff count per part.
-    public var partStaffCounts: [String: Int] = [:]
+    public internal(set) var partStaffCounts: [String: Int] = [:]
 
     /// Instrument definitions per part.
-    public var partInstruments: [String: [Instrument]] = [:]
+    public internal(set) var partInstruments: [String: [Instrument]] = [:]
 
     /// MIDI instrument settings per part.
-    public var partMidiInstruments: [String: [MIDIInstrument]] = [:]
+    public internal(set) var partMidiInstruments: [String: [MIDIInstrument]] = [:]
 
     public init() {}
 

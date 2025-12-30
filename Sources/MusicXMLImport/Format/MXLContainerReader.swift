@@ -5,6 +5,31 @@ import ZIPFoundation
 public struct MXLContainerReader {
     public init() {}
 
+    // MARK: - Path Security
+
+    /// Validates that a path from an archive doesn't attempt path traversal.
+    /// - Parameter path: The path to validate.
+    /// - Throws: `MusicXMLError.invalidMXLArchive` if path traversal is detected.
+    private func validatePath(_ path: String) throws {
+        // Check for path traversal attempts
+        let components = path.components(separatedBy: "/")
+        for component in components {
+            if component == ".." {
+                throw MusicXMLError.invalidMXLArchive("Path traversal detected in archive path: \(path)")
+            }
+        }
+
+        // Also check for absolute paths (shouldn't start with /)
+        if path.hasPrefix("/") {
+            throw MusicXMLError.invalidMXLArchive("Absolute path detected in archive: \(path)")
+        }
+
+        // Check for backslash-based traversal (Windows-style)
+        if path.contains("..\\") || path.contains("\\..") {
+            throw MusicXMLError.invalidMXLArchive("Path traversal detected in archive path: \(path)")
+        }
+    }
+
     /// Extracts the main MusicXML document from an MXL archive.
     /// - Parameter url: URL to the .mxl file.
     /// - Returns: The extracted XML data.
@@ -31,6 +56,9 @@ public struct MXLContainerReader {
     private func extractMainDocument(from archive: Archive) throws -> Data {
         // First, read META-INF/container.xml to find the root file
         let rootFilePath = try findRootFile(in: archive)
+
+        // Validate the path before using it
+        try validatePath(rootFilePath)
 
         // Extract the root file
         guard let entry = archive[rootFilePath] else {
@@ -81,6 +109,9 @@ public struct MXLContainerReader {
 
         for entry in archive {
             guard entry.type == .file else { continue }
+
+            // Validate path before extraction
+            try validatePath(entry.path)
 
             var fileData = Data()
             _ = try archive.extract(entry) { data in

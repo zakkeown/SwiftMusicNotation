@@ -36,6 +36,14 @@ import MusicNotationCore
 /// - SeeAlso: ``NoteMapper`` for note element parsing
 /// - SeeAlso: ``MeasureAttributes`` for the output model
 public struct AttributesMapper {
+    // MARK: - Validation Constants
+
+    /// Maximum reasonable value for divisions (prevents DoS).
+    private static let maxDivisions: Int = 1_000_000
+
+    /// Maximum reasonable number of staves per part.
+    private static let maxStaves: Int = 100
+
     public init() {}
 
     /// Maps an `<attributes>` XML element to a ``MeasureAttributes`` model.
@@ -57,6 +65,10 @@ public struct AttributesMapper {
         var divisions: Int?
         if let divisionsStr = element.child(named: "divisions")?.textContent,
            let divisionsValue = Int(divisionsStr) {
+            // Validate divisions is within reasonable bounds
+            guard divisionsValue > 0 && divisionsValue <= Self.maxDivisions else {
+                throw MusicXMLError.invalidXMLStructure("Divisions value \(divisionsValue) is out of valid range (1-\(Self.maxDivisions))")
+            }
             context.divisions = divisionsValue
             divisions = divisionsValue
         }
@@ -65,6 +77,10 @@ public struct AttributesMapper {
         var staves: Int?
         if let stavesStr = element.child(named: "staves")?.textContent,
            let stavesValue = Int(stavesStr) {
+            // Validate staves is within reasonable bounds
+            guard stavesValue > 0 && stavesValue <= Self.maxStaves else {
+                throw MusicXMLError.invalidXMLStructure("Staves value \(stavesValue) is out of valid range (1-\(Self.maxStaves))")
+            }
             staves = stavesValue
             if let partId = context.currentPartId {
                 context.partStaffCounts[partId] = stavesValue

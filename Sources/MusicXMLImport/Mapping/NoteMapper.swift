@@ -36,6 +36,22 @@ import MusicNotationCore
 /// - SeeAlso: ``AttributesMapper`` for measure attribute parsing
 /// - SeeAlso: ``DirectionMapper`` for direction element parsing
 public struct NoteMapper {
+    // MARK: - Validation Constants
+
+    /// Maximum reasonable value for divisions (prevents DoS from huge values).
+    private static let maxDivisions: Int = 1_000_000
+
+    /// Maximum reasonable value for voice/staff numbers.
+    private static let maxVoiceOrStaff: Int = 100
+
+    /// Validates a numeric value is within reasonable bounds.
+    private func validateBounds(_ value: Int, max: Int, name: String) throws -> Int {
+        guard value >= 0 && value <= max else {
+            throw MusicXMLError.invalidXMLStructure("\(name) value \(value) is out of valid range (0-\(max))")
+        }
+        return value
+    }
+
     public init() {}
 
     /// Maps an XML `<note>` element to a ``Note`` model object.
@@ -69,12 +85,16 @@ public struct NoteMapper {
             throw MusicXMLError.invalidXMLStructure("Note must have pitch, rest, or unpitched")
         }
 
-        // Parse duration
-        let durationDivisions = element.child(named: "duration")?.textContent.flatMap(Int.init) ?? 0
+        // Parse duration with bounds checking
+        let rawDuration = element.child(named: "duration")?.textContent.flatMap(Int.init) ?? 0
+        let durationDivisions = try validateBounds(rawDuration, max: Self.maxDivisions, name: "Duration")
 
-        // Parse voice and staff
-        let voice = element.child(named: "voice")?.textContent.flatMap(Int.init) ?? 1
-        let staff = element.child(named: "staff")?.textContent.flatMap(Int.init) ?? 1
+        // Parse voice and staff with bounds checking
+        let rawVoice = element.child(named: "voice")?.textContent.flatMap(Int.init) ?? 1
+        let voice = try validateBounds(rawVoice, max: Self.maxVoiceOrStaff, name: "Voice")
+
+        let rawStaff = element.child(named: "staff")?.textContent.flatMap(Int.init) ?? 1
+        let staff = try validateBounds(rawStaff, max: Self.maxVoiceOrStaff, name: "Staff")
 
         // Parse type (visual duration)
         let noteTypeStr = element.child(named: "type")?.textContent
