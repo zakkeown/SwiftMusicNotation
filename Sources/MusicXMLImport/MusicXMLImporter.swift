@@ -414,8 +414,9 @@ public final class MusicXMLImporter {
                 }
 
             case "harmony":
-                // TODO: Parse harmony/chord symbols
-                break
+                if let harmony = parseHarmony(from: child) {
+                    elements.append(.harmony(harmony))
+                }
 
             default:
                 break
@@ -681,6 +682,58 @@ public final class MusicXMLImporter {
             barStyle: barStyle,
             repeatDirection: repeatDirection,
             ending: ending
+        )
+    }
+
+    // MARK: - Harmony Parsing
+
+    private func parseHarmony(from element: XMLElement) -> Harmony? {
+        // Parse root (required)
+        guard let rootElement = element.child(named: "root"),
+              let rootStepStr = rootElement.child(named: "root-step")?.textContent,
+              let rootStep = PitchStep(rawValue: rootStepStr.uppercased()) else {
+            return nil
+        }
+
+        let rootAlter = rootElement.child(named: "root-alter")?.textContent.flatMap { Double($0) }
+        let root = HarmonyRoot(step: rootStep, alter: rootAlter)
+
+        // Parse kind (default to major)
+        let kindText = element.child(named: "kind")?.textContent ?? "major"
+        let kind = ChordKind(rawValue: kindText) ?? .other
+
+        // Parse bass (optional, for slash chords like C/G)
+        var bass: HarmonyRoot?
+        if let bassElement = element.child(named: "bass"),
+           let bassStepStr = bassElement.child(named: "bass-step")?.textContent,
+           let bassStep = PitchStep(rawValue: bassStepStr.uppercased()) {
+            let bassAlter = bassElement.child(named: "bass-alter")?.textContent.flatMap { Double($0) }
+            bass = HarmonyRoot(step: bassStep, alter: bassAlter)
+        }
+
+        // Parse degrees (add9, #11, etc.)
+        var degrees: [ChordDegree] = []
+        for degreeElement in element.children(named: "degree") {
+            if let valueStr = degreeElement.child(named: "degree-value")?.textContent,
+               let value = Int(valueStr),
+               let typeStr = degreeElement.child(named: "degree-type")?.textContent,
+               let type = DegreeType(rawValue: typeStr) {
+                let alter = degreeElement.child(named: "degree-alter")?.textContent.flatMap { Double($0) }
+                degrees.append(ChordDegree(value: value, alter: alter, type: type))
+            }
+        }
+
+        // Parse offset and staff
+        let offset = element.child(named: "offset")?.textContent.flatMap { Int($0) }
+        let staff = element.attribute(named: "staff").flatMap { Int($0) }
+
+        return Harmony(
+            root: root,
+            kind: kind,
+            bass: bass,
+            degrees: degrees,
+            offset: offset,
+            staff: staff
         )
     }
 

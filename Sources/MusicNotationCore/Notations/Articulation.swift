@@ -71,12 +71,12 @@ extension Articulation {
         case .unstress: return .articUnstressAbove
         case .breathMark: return .breathMarkComma
         case .caesura: return .caesura
-        case .upBow: return nil  // TODO: Add stringsUpBow to SMuFLGlyphName
-        case .downBow: return nil  // TODO: Add stringsDownBow to SMuFLGlyphName
-        case .harmonic: return nil  // TODO: Add stringsHarmonic to SMuFLGlyphName
-        case .openString: return nil  // Uses "o" or circle
-        case .thumbPosition: return nil  // TODO: Add stringsThumbPosition to SMuFLGlyphName
-        case .snapPizzicato: return nil  // Bartók pizz
+        case .upBow: return .stringsUpBow
+        case .downBow: return .stringsDownBow
+        case .harmonic: return .stringsHarmonic
+        case .openString: return .stringsHarmonic  // Open string uses same circle glyph
+        case .thumbPosition: return .stringsThumbPosition
+        case .snapPizzicato: return .stringsSnapPizzicatoAbove
         case .softAccent: return .articSoftAccentAbove
         default: return nil
         }
@@ -95,6 +95,7 @@ extension Articulation {
         case .stress: return .articStressBelow
         case .unstress: return .articUnstressBelow
         case .softAccent: return .articSoftAccentBelow
+        case .snapPizzicato: return .stringsSnapPizzicatoBelow
         default: return glyphAbove  // Many don't have separate below variants
         }
     }

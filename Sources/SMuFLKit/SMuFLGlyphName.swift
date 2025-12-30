@@ -355,6 +355,29 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
     case quindicesimaAlta = "quindicesimaAlta"                   // U+E515
     case quindicesimaBassa = "quindicesimaBassa"                 // U+E516
 
+    // MARK: - String Techniques (U+E610–U+E62F)
+
+    case stringsDownBow = "stringsDownBow"                       // U+E610
+    case stringsDownBowTurned = "stringsDownBowTurned"           // U+E611
+    case stringsUpBow = "stringsUpBow"                           // U+E612
+    case stringsUpBowTurned = "stringsUpBowTurned"               // U+E613
+    case stringsHarmonic = "stringsHarmonic"                     // U+E614
+    case stringsHalfHarmonic = "stringsHalfHarmonic"             // U+E615
+    case stringsMuteOn = "stringsMuteOn"                         // U+E622
+    case stringsMuteOff = "stringsMuteOff"                       // U+E623
+    case stringsThumbPosition = "stringsThumbPosition"           // U+E624
+    case stringsThumbPositionTurned = "stringsThumbPositionTurned" // U+E625
+    case stringsVibratoPulse = "stringsVibratoPulse"             // U+E620
+    case stringsBowBehindBridge = "stringsBowBehindBridge"       // U+E618
+    case stringsBowOnBridge = "stringsBowOnBridge"               // U+E619
+    case stringsBowOnTailpiece = "stringsBowOnTailpiece"         // U+E61A
+    case stringsJeteAbove = "stringsJeteAbove"                   // U+E626
+    case stringsJeteBelow = "stringsJeteBelow"                   // U+E627
+    case stringsFouette = "stringsFouette"                       // U+E628
+    case stringsChangeBowDirection = "stringsChangeBowDirection" // U+E629
+    case stringsSnapPizzicatoAbove = "stringsSnapPizzicatoAbove" // U+E630
+    case stringsSnapPizzicatoBelow = "stringsSnapPizzicatoBelow" // U+E631
+
     /// The Unicode code point for this glyph in the SMuFL Private Use Area.
     public var codePoint: UInt32 {
         // This would ideally be loaded from glyphnames.json
@@ -678,6 +701,28 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
         case .quindicesima: return 0xE514
         case .quindicesimaAlta: return 0xE515
         case .quindicesimaBassa: return 0xE516
+
+        // String techniques
+        case .stringsDownBow: return 0xE610
+        case .stringsDownBowTurned: return 0xE611
+        case .stringsUpBow: return 0xE612
+        case .stringsUpBowTurned: return 0xE613
+        case .stringsHarmonic: return 0xE614
+        case .stringsHalfHarmonic: return 0xE615
+        case .stringsBowBehindBridge: return 0xE618
+        case .stringsBowOnBridge: return 0xE619
+        case .stringsBowOnTailpiece: return 0xE61A
+        case .stringsVibratoPulse: return 0xE620
+        case .stringsMuteOn: return 0xE622
+        case .stringsMuteOff: return 0xE623
+        case .stringsThumbPosition: return 0xE624
+        case .stringsThumbPositionTurned: return 0xE625
+        case .stringsJeteAbove: return 0xE626
+        case .stringsJeteBelow: return 0xE627
+        case .stringsFouette: return 0xE628
+        case .stringsChangeBowDirection: return 0xE629
+        case .stringsSnapPizzicatoAbove: return 0xE630
+        case .stringsSnapPizzicatoBelow: return 0xE631
         }
     }
 

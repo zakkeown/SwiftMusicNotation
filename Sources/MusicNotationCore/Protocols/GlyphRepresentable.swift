@@ -132,8 +132,20 @@ extension Accidental: GlyphRepresentable {
         case .quarterToneFlat: return .accidentalQuarterToneFlatStein
         case .threeQuarterToneSharp: return .accidentalThreeQuarterTonesSharpStein
         case .threeQuarterToneFlat: return .accidentalThreeQuarterTonesFlatZimmermann
-        // Arrow accidentals, sori/koron - TODO: add SMuFL glyph mappings
-        default: return nil
+        // Arrow accidentals (Gould system)
+        case .sharpArrowUp: return .accidentalSharpOneArrowUp
+        case .sharpArrowDown: return .accidentalSharpOneArrowDown
+        case .flatArrowUp: return .accidentalFlatOneArrowUp
+        case .flatArrowDown: return .accidentalFlatOneArrowDown
+        case .naturalArrowUp: return .accidentalNaturalOneArrowUp
+        case .naturalArrowDown: return .accidentalNaturalOneArrowDown
+        case .doubleSharpArrowUp: return .accidentalDoubleSharpOneArrowUp
+        case .doubleSharpArrowDown: return .accidentalDoubleSharpOneArrowDown
+        case .doubleFlatArrowUp: return .accidentalDoubleFlatOneArrowUp
+        case .doubleFlatArrowDown: return .accidentalDoubleFlatOneArrowDown
+        // Persian accidentals
+        case .sori: return .accidentalSori
+        case .koron: return .accidentalKoron
         }
     }
 }
