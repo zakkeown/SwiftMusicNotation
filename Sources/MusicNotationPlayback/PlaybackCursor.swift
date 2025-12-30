@@ -1,25 +1,23 @@
 import Foundation
 import MusicNotationCore
 
+/// Delegate protocol for playback cursor position updates.
+public protocol PlaybackCursorDelegate: AnyObject {
+    /// Called when the playback position changes.
+    func cursorDidMove(to position: PlaybackPosition)
+
+    /// Called when entering a new measure.
+    func cursorDidEnterMeasure(_ measureNumber: Int)
+
+    /// Called when playback reaches a specific element.
+    func cursorDidReachElement(id: String, in measureNumber: Int)
+}
+
 /// Tracks the current playback position and provides position callbacks.
 ///
 /// Maps between time-based playback position and score coordinates
 /// (measure number, beat position) for UI synchronization.
 public final class PlaybackCursor: @unchecked Sendable {
-
-    // MARK: - Types
-
-    /// Delegate protocol for position updates.
-    public protocol Delegate: AnyObject {
-        /// Called when the playback position changes.
-        func cursorDidMove(to position: PlaybackPosition)
-
-        /// Called when entering a new measure.
-        func cursorDidEnterMeasure(_ measureNumber: Int)
-
-        /// Called when playback reaches a specific element.
-        func cursorDidReachElement(id: String, in measureNumber: Int)
-    }
 
     // MARK: - Properties
 
@@ -27,7 +25,7 @@ public final class PlaybackCursor: @unchecked Sendable {
     public let score: Score
 
     /// Delegate for position updates.
-    public weak var delegate: Delegate?
+    public weak var delegate: PlaybackCursorDelegate?
 
     /// Current position in the score.
     public private(set) var currentPosition: PlaybackPosition = .zero

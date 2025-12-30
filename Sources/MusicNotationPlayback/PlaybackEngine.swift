@@ -459,7 +459,8 @@ public final class PlaybackEngine: ObservableObject {
     private func startPlaybackTimer() {
         // Use a high-frequency timer for accurate scheduling
         playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            guard let self = self else { return }
+            Task { @MainActor [weak self] in
                 self?.processPlayback()
             }
         }
