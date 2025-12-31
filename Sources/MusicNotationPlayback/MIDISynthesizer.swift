@@ -1,6 +1,58 @@
 import Foundation
 import AVFoundation
 
+// MARK: - MIDI Synthesizer Protocol
+
+/// Protocol for MIDI synthesizers, enabling dependency injection and testing.
+///
+/// Conform to this protocol to create custom synthesizers or mock
+/// implementations for testing playback without audio hardware.
+public protocol MIDISynthesizerProtocol: AnyObject {
+    /// Whether the synthesizer is currently running.
+    var isRunning: Bool { get }
+
+    /// Current playback time in seconds.
+    var currentTime: TimeInterval { get }
+
+    /// Sets up the audio engine and loads the sound bank.
+    func setup() async throws
+
+    /// Starts the audio engine.
+    func start() throws
+
+    /// Stops the audio engine.
+    func stop()
+
+    /// Resets the playback time.
+    func resetTime()
+
+    /// Sends a note-on event.
+    func noteOn(note: UInt8, velocity: UInt8, channel: UInt8)
+
+    /// Sends a note-off event.
+    func noteOff(note: UInt8, channel: UInt8)
+
+    /// Sends a program change event.
+    func programChange(program: UInt8, channel: UInt8)
+
+    /// Sends a control change event.
+    func controlChange(controller: UInt8, value: UInt8, channel: UInt8)
+
+    /// Turns off all notes on all channels.
+    func allNotesOff()
+
+    /// Sets the master volume.
+    func setMasterVolume(_ volume: Float)
+
+    /// Sets the volume for a specific channel.
+    func setVolume(_ volume: Float, forChannel channel: UInt8)
+
+    /// Mutes or unmutes a specific channel.
+    func setMuted(_ muted: Bool, forChannel channel: UInt8)
+}
+
+// MARK: - MIDI Synthesizer
+
 /// MIDI synthesizer using AVAudioEngine and AVAudioUnitSampler.
 ///
 /// `MIDISynthesizer` provides real-time audio synthesis of MIDI events using Apple's
@@ -55,7 +107,7 @@ import AVFoundation
 ///
 /// - SeeAlso: ``ScoreSequencer`` for converting scores to MIDI events
 /// - SeeAlso: ``PlaybackEngine`` for high-level playback control
-public final class MIDISynthesizer: @unchecked Sendable {
+public final class MIDISynthesizer: MIDISynthesizerProtocol, @unchecked Sendable {
 
     // MARK: - Properties
 
@@ -68,16 +120,28 @@ public final class MIDISynthesizer: @unchecked Sendable {
     /// Mixer node for volume control.
     private let mixer: AVAudioMixerNode
 
+    /// Lock for thread-safe access to mutable state.
+    private let stateLock = NSLock()
+
     /// Start time for calculating current position.
-    private var engineStartTime: TimeInterval = 0
+    private var _engineStartTime: TimeInterval = 0
 
     /// Whether the engine is running.
-    public private(set) var isRunning: Bool = false
+    private var _isRunning: Bool = false
 
-    /// Current playback time in seconds.
+    /// Whether the engine is running (thread-safe).
+    public var isRunning: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return _isRunning
+    }
+
+    /// Current playback time in seconds (thread-safe).
     public var currentTime: TimeInterval {
-        guard isRunning else { return 0 }
-        return CACurrentMediaTime() - engineStartTime
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard _isRunning else { return 0 }
+        return CACurrentMediaTime() - _engineStartTime
     }
 
     /// Per-channel volume levels.
@@ -162,24 +226,42 @@ public final class MIDISynthesizer: @unchecked Sendable {
 
     /// Starts the audio engine.
     public func start() throws {
-        guard !isRunning else { return }
+        stateLock.lock()
+        guard !_isRunning else {
+            stateLock.unlock()
+            return
+        }
+        stateLock.unlock()
 
         try audioEngine.start()
-        isRunning = true
-        engineStartTime = CACurrentMediaTime()
+
+        stateLock.lock()
+        _isRunning = true
+        _engineStartTime = CACurrentMediaTime()
+        stateLock.unlock()
     }
 
     /// Stops the audio engine.
     public func stop() {
-        guard isRunning else { return }
+        stateLock.lock()
+        guard _isRunning else {
+            stateLock.unlock()
+            return
+        }
+        stateLock.unlock()
 
         audioEngine.stop()
-        isRunning = false
+
+        stateLock.lock()
+        _isRunning = false
+        stateLock.unlock()
     }
 
     /// Resets the playback time.
     public func resetTime() {
-        engineStartTime = CACurrentMediaTime()
+        stateLock.lock()
+        _engineStartTime = CACurrentMediaTime()
+        stateLock.unlock()
     }
 
     // MARK: - MIDI Events
@@ -190,14 +272,19 @@ public final class MIDISynthesizer: @unchecked Sendable {
     ///   - velocity: Note velocity (0-127).
     ///   - channel: MIDI channel (0-15).
     public func noteOn(note: UInt8, velocity: UInt8, channel: UInt8) {
+        stateLock.lock()
         // Check if channel is muted
-        if channelMutes[channel] == true { return }
+        if channelMutes[channel] == true {
+            stateLock.unlock()
+            return
+        }
 
         // Apply channel volume
         var adjustedVelocity = velocity
         if let channelVolume = channelVolumes[channel] {
             adjustedVelocity = UInt8(Float(velocity) * channelVolume)
         }
+        stateLock.unlock()
 
         sampler.startNote(note, withVelocity: adjustedVelocity, onChannel: channel)
     }
@@ -258,7 +345,9 @@ public final class MIDISynthesizer: @unchecked Sendable {
     ///   - volume: Volume level (0.0 to 1.0).
     ///   - channel: MIDI channel (0-15).
     public func setVolume(_ volume: Float, forChannel channel: UInt8) {
+        stateLock.lock()
         channelVolumes[channel] = volume
+        stateLock.unlock()
         // Send volume control change (CC 7)
         let midiVolume = UInt8(volume * 127)
         sampler.sendController(7, withValue: midiVolume, onChannel: channel)
@@ -269,7 +358,9 @@ public final class MIDISynthesizer: @unchecked Sendable {
     ///   - muted: Whether the channel should be muted.
     ///   - channel: MIDI channel (0-15).
     public func setMuted(_ muted: Bool, forChannel channel: UInt8) {
+        stateLock.lock()
         channelMutes[channel] = muted
+        stateLock.unlock()
 
         if muted {
             // Turn off all notes on this channel

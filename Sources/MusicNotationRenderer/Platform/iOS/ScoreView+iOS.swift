@@ -168,9 +168,9 @@ public final class ScoreView: UIScrollView, ScoreViewProtocol, UIScrollViewDeleg
     public func setScore(_ score: Score, layoutContext: LayoutContext) {
         self.score = score
 
-        // Layout the score
-        let layoutEngine = LayoutEngine(context: layoutContext)
-        self.engravedScore = layoutEngine.layout(score)
+        // Layout the score using the real layout engine
+        let layoutEngine = MusicNotationLayout.LayoutEngine()
+        self.engravedScore = layoutEngine.layout(score: score, context: layoutContext)
 
         // Initialize hit tester
         if let engraved = engravedScore {
@@ -480,62 +480,4 @@ private class ScoreContentView: UIView {
     }
 }
 
-// MARK: - Layout Engine Stub (iOS)
-
-/// Stub layout engine for basic layout functionality.
-private class LayoutEngine {
-    let context: LayoutContext
-
-    init(context: LayoutContext) {
-        self.context = context
-    }
-
-    func layout(_ score: Score) -> EngravedScore {
-        var pages: [EngravedPage] = []
-        var systems: [EngravedSystem] = []
-        var currentY: CGFloat = context.margins.top
-
-        for (partIndex, part) in score.parts.enumerated() {
-            var measures: [EngravedMeasure] = []
-            var measureX: CGFloat = 0
-
-            for measure in part.measures {
-                let measureWidth: CGFloat = 100
-                let measureFrame = CGRect(x: measureX, y: 0, width: measureWidth, height: context.staffHeight)
-                measures.append(EngravedMeasure(
-                    measureNumber: Int(measure.number) ?? 0,
-                    frame: measureFrame,
-                    elements: []
-                ))
-                measureX += measureWidth
-            }
-
-            let staff = EngravedStaff(
-                partIndex: partIndex,
-                staffIndex: 0,
-                origin: CGPoint(x: 0, y: currentY),
-                width: measureX,
-                measures: measures
-            )
-
-            let system = EngravedSystem(
-                origin: CGPoint(x: context.margins.left, y: currentY),
-                width: context.pageSize.width - context.margins.left - context.margins.right,
-                staves: [staff]
-            )
-            systems.append(system)
-            currentY += context.staffHeight + context.staffSpacing
-        }
-
-        let page = EngravedPage(
-            pageNumber: 1,
-            origin: .zero,
-            size: context.pageSize,
-            systems: systems
-        )
-        pages.append(page)
-
-        return EngravedScore(pages: pages)
-    }
-}
 #endif

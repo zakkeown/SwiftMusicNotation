@@ -8,6 +8,28 @@ import MusicNotationCore
 import MusicNotationLayout
 import SMuFLKit
 
+// MARK: - Music Renderer Protocol
+
+/// Protocol for music renderers, enabling dependency injection and testing.
+///
+/// Conform to this protocol to create custom renderers or mock
+/// implementations for testing without actual Core Graphics rendering.
+public protocol MusicRendererProtocol {
+    /// The rendering configuration controlling colors and line thicknesses.
+    var config: RenderConfiguration { get set }
+
+    /// The SMuFL font used for rendering musical glyphs.
+    var font: LoadedSMuFLFont? { get set }
+
+    /// Renders a single page from an engraved score to a Core Graphics context.
+    ///
+    /// - Parameters:
+    ///   - score: The engraved score containing layout information.
+    ///   - pageIndex: The zero-based index of the page to render.
+    ///   - context: The Core Graphics context to render into.
+    func render(score: EngravedScore, pageIndex: Int, in context: CGContext)
+}
+
 // MARK: - Music Renderer
 
 /// Renders engraved music notation to Core Graphics contexts.
@@ -62,7 +84,7 @@ import SMuFLKit
 /// - SeeAlso: `RenderConfiguration` for customizing visual appearance
 /// - SeeAlso: `RenderContext` for per-render state
 /// - SeeAlso: `ScoreViewRepresentable` for SwiftUI integration
-public final class MusicRenderer {
+public final class MusicRenderer: MusicRendererProtocol {
     /// The rendering configuration controlling colors and line thicknesses.
     ///
     /// Modify this property to change the visual appearance of rendered scores.
@@ -180,7 +202,7 @@ public final class MusicRenderer {
 
         // Render staff groupings (brackets, braces)
         for grouping in system.groupings {
-            renderStaffGrouping(grouping, in: context, renderContext: renderContext)
+            renderStaffGrouping(grouping, staves: system.staves, in: context, renderContext: renderContext)
         }
 
         // Render system barlines
@@ -215,31 +237,45 @@ public final class MusicRenderer {
         context.restoreGState()
     }
 
-    private func renderStaffGrouping(_ grouping: EngravedStaffGrouping, in context: CGContext, renderContext: RenderContext) {
+    private func renderStaffGrouping(_ grouping: EngravedStaffGrouping, staves: [EngravedStaff], in context: CGContext, renderContext: RenderContext) {
+        // Calculate Y positions from staff indices
+        guard grouping.topStaffIndex < staves.count,
+              grouping.bottomStaffIndex < staves.count else {
+            return
+        }
+
+        let topStaff = staves[grouping.topStaffIndex]
+        let bottomStaff = staves[grouping.bottomStaffIndex]
+        let topY = topStaff.frame.minY
+        let bottomY = bottomStaff.frame.maxY
+
         switch grouping.symbol {
         case .brace:
-            // Render brace glyph
-            if grouping.braceGlyph != nil {
-                // Braces need special handling - they're stretched to fit
-                // For now, just draw a placeholder
-                context.saveGState()
-                context.setStrokeColor(config.staffLineColor)
-                context.setLineWidth(2)
-                context.move(to: CGPoint(x: grouping.x, y: 0))
-                context.addLine(to: CGPoint(x: grouping.x, y: 100))
-                context.strokePath()
-                context.restoreGState()
+            // Render brace glyph using GlyphRenderer
+            if let font = renderContext.font {
+                let glyphRenderer = GlyphRenderer(font: font)
+                glyphRenderer.renderBrace(
+                    at: grouping.x,
+                    topY: topY,
+                    bottomY: bottomY,
+                    color: config.staffLineColor,
+                    in: context
+                )
             }
 
         case .bracket:
-            // Draw bracket line with hooks
-            context.saveGState()
-            context.setStrokeColor(config.staffLineColor)
-            context.setLineWidth(renderContext.config.bracketThickness)
-            context.move(to: CGPoint(x: grouping.x, y: 0))
-            context.addLine(to: CGPoint(x: grouping.x, y: 100))
-            context.strokePath()
-            context.restoreGState()
+            // Draw bracket using GlyphRenderer
+            if let font = renderContext.font {
+                let glyphRenderer = GlyphRenderer(font: font)
+                glyphRenderer.renderBracket(
+                    at: grouping.x,
+                    topY: topY,
+                    bottomY: bottomY,
+                    thickness: renderContext.config.bracketThickness,
+                    color: config.staffLineColor,
+                    in: context
+                )
+            }
 
         case .line, .square, .none:
             break
@@ -507,7 +543,10 @@ public final class MusicRenderer {
             kCTForegroundColorFromContextAttributeName: true
         ]
 
-        let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary)!
+        guard let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary) else {
+            context.restoreGState()
+            return
+        }
         let line = CTLineCreateWithAttributedString(attributedString)
 
         var drawPosition = position

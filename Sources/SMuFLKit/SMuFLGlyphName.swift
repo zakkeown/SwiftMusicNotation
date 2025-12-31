@@ -379,9 +379,11 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
     case stringsSnapPizzicatoBelow = "stringsSnapPizzicatoBelow" // U+E631
 
     /// The Unicode code point for this glyph in the SMuFL Private Use Area.
+    ///
+    /// Code points follow the SMuFL specification. For glyphs not listed here,
+    /// use `LoadedSMuFLFont.glyph(for:)` which looks up the glyph in the font's
+    /// metadata at runtime.
     public var codePoint: UInt32 {
-        // This would ideally be loaded from glyphnames.json
-        // For now, returning placeholder values for key glyphs
         switch self {
         // Clefs
         case .gClef: return 0xE050
@@ -726,14 +728,20 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// The Unicode character for this glyph.
-    public var character: Character {
-        Character(UnicodeScalar(codePoint)!)
+    /// The Unicode character for this glyph, if the codepoint is valid.
+    ///
+    /// All SMuFL codepoints are in the valid Unicode Private Use Area (0xE000-0xF8FF),
+    /// so this property should always return a character for valid enum cases.
+    public var character: Character? {
+        guard let scalar = UnicodeScalar(codePoint) else {
+            return nil
+        }
+        return Character(scalar)
     }
 
-    /// The string representation for rendering.
-    public var string: String {
-        String(character)
+    /// The string representation for rendering, if the codepoint is valid.
+    public var string: String? {
+        character.map { String($0) }
     }
 }
 

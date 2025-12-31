@@ -115,8 +115,15 @@ public final class ScoreView: NSView, ScoreViewProtocol {
     /// Sets the score and triggers layout.
     public func setScore(_ score: Score, layoutContext: LayoutContext) {
         self.score = score
-        // Note: Layout would be performed by the layout engine
-        // For now, this is a stub - actual layout integration needed
+
+        // Layout the score using the real layout engine
+        let layoutEngine = MusicNotationLayout.LayoutEngine()
+        self.engravedScore = layoutEngine.layout(score: score, context: layoutContext)
+
+        // Initialize hit tester
+        if let engraved = engravedScore {
+            hitTester = HitTester(engravedScore: engraved)
+        }
     }
 
     /// Zooms to fit the entire score in the visible area.

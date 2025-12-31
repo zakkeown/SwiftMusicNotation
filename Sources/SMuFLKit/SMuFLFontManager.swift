@@ -437,13 +437,14 @@ public final class LoadedSMuFLFont: @unchecked Sendable {
         var characters = Array(string.utf16)
         var glyphs = [CGGlyph](repeating: 0, count: characters.count)
 
-        guard CTFontGetGlyphsForCharacters(ctFont, &characters, &glyphs, characters.count) else {
+        guard CTFontGetGlyphsForCharacters(ctFont, &characters, &glyphs, characters.count),
+              let firstGlyph = glyphs.first else {
             glyphCache[codePoint] = 0
             return nil
         }
 
-        glyphCache[codePoint] = glyphs[0]
-        return glyphs[0]
+        glyphCache[codePoint] = firstGlyph
+        return firstGlyph
     }
 
     // MARK: - Metadata Access

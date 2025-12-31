@@ -77,7 +77,10 @@ public struct InstrumentMapper: Sendable {
         }
 
         // Check MIDI instrument in score-part if available
-        // For now, default to acoustic grand piano
+        // Default to acoustic grand piano for unknown instruments
+        #if DEBUG
+        print("[InstrumentMapper] Unknown instrument '\(part.name)', defaulting to Acoustic Grand Piano")
+        #endif
         return GeneralMIDI.acousticGrandPiano.rawValue
     }
 

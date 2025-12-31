@@ -115,11 +115,12 @@ public final class VerticalSpacingEngine {
         elementBounds: [CGRect],
         staffHeight: CGFloat
     ) -> CGFloat {
-        guard !staffPositions.isEmpty else { return staffHeight }
+        guard let firstStaff = staffPositions.first,
+              let lastStaff = staffPositions.last else {
+            return staffHeight
+        }
 
         // Base height from staff positions
-        let firstStaff = staffPositions.first!
-        let lastStaff = staffPositions.last!
         var height = lastStaff.bottomY - firstStaff.topY
 
         // Add space for elements that extend beyond staves

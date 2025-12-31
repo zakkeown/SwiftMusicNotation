@@ -713,8 +713,8 @@ public enum ZoomPreset: CGFloat, CaseIterable, Sendable {
 public extension EngravedScore {
     /// Total bounds encompassing all pages.
     var totalBounds: CGRect {
-        guard !pages.isEmpty else { return .zero }
-        var bounds = pages[0].frame
+        guard let firstPage = pages.first else { return .zero }
+        var bounds = firstPage.frame
         for page in pages.dropFirst() {
             bounds = bounds.union(page.frame)
         }

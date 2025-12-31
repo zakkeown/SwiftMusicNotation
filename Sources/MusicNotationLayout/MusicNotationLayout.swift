@@ -6,6 +6,25 @@ import CoreGraphics
 import MusicNotationCore
 import SMuFLKit
 
+// MARK: - Layout Engine Protocol
+
+/// Protocol for layout engines, enabling dependency injection and testing.
+///
+/// Conform to this protocol to create custom layout engines or mock
+/// implementations for testing.
+public protocol LayoutEngineProtocol {
+    /// Configuration options that control layout behavior.
+    var config: LayoutConfiguration { get set }
+
+    /// Computes the complete layout for a score.
+    ///
+    /// - Parameters:
+    ///   - score: The score to compute layout for.
+    ///   - context: Page size, margins, and display settings.
+    /// - Returns: An ``EngravedScore`` with computed positions for all elements.
+    func layout(score: Score, context: LayoutContext) -> EngravedScore
+}
+
 // MARK: - Layout Engine
 
 /// Computes precise positions for all elements in a music score.
@@ -96,7 +115,7 @@ import SMuFLKit
 ///
 /// `LayoutEngine` is not thread-safe. Create separate instances for concurrent
 /// layout operations, or synchronize access externally.
-public final class LayoutEngine {
+public final class LayoutEngine: LayoutEngineProtocol {
     /// Engine for computing horizontal spacing between elements.
     private let horizontalSpacing: HorizontalSpacingEngine
 
@@ -298,9 +317,10 @@ public final class LayoutEngine {
     }
 
     private func computeBaseSystemHeight(staffPositions: [StaffPositionInfo]) -> CGFloat {
-        guard !staffPositions.isEmpty else { return 0 }
-        let first = staffPositions.first!
-        let last = staffPositions.last!
+        guard let first = staffPositions.first,
+              let last = staffPositions.last else {
+            return 0
+        }
         return last.bottomY - first.topY
     }
 
