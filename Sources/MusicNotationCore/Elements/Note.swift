@@ -617,47 +617,278 @@ public enum StartStopContinue: String, Codable, Sendable {
     case `continue`
 }
 
-// MARK: - Placeholder Types
+// MARK: - Articulations
 
-/// Articulation marking (placeholder - expand as needed).
+/// Articulation marking with placement information.
+///
+/// This struct wraps the ``Articulation`` enum for note attachments, providing
+/// placement information for rendering. See ``Articulation`` for the full
+/// list of articulation types and their SMuFL glyph mappings.
 public struct ArticulationMark: Codable, Sendable {
-    public var type: String
+    /// The type of articulation.
+    public var articulation: Articulation
+    /// Placement above or below the note.
     public var placement: Placement?
 
-    public init(type: String, placement: Placement? = nil) {
-        self.type = type
+    public init(articulation: Articulation, placement: Placement? = nil) {
+        self.articulation = articulation
         self.placement = placement
+    }
+
+    /// Initializer for MusicXML element names (for backwards compatibility).
+    public init(type: String, placement: Placement? = nil) {
+        self.articulation = Articulation(musicXMLName: type) ?? .accent
+        self.placement = placement
+    }
+
+    /// The effective placement (explicit or default based on articulation type).
+    public var effectivePlacement: Placement {
+        placement ?? articulation.defaultPlacement
     }
 }
 
-/// Dynamic marking (placeholder - expand as needed).
+// MARK: - Dynamics (Note-attached)
+
+/// Dynamic marking attached to a note.
 public struct DynamicMark: Codable, Sendable {
-    public var type: String
+    /// The dynamic value.
+    public var dynamic: Dynamic
+    /// Placement above or below the note.
     public var placement: Placement?
 
+    public init(dynamic: Dynamic, placement: Placement? = nil) {
+        self.dynamic = dynamic
+        self.placement = placement
+    }
+
+    /// Legacy initializer for string-based type (for backwards compatibility).
     public init(type: String, placement: Placement? = nil) {
-        self.type = type
+        self.dynamic = Dynamic(musicXMLName: type) ?? .mf
         self.placement = placement
     }
 }
 
-/// Ornament (placeholder - expand as needed).
+// MARK: - Ornaments
+
+/// Types of ornament markings.
+public enum OrnamentType: String, Codable, Sendable, CaseIterable {
+    /// Trill - rapid alternation with the note above.
+    case trill
+    /// Turn - main note, note above, main note, note below, main note.
+    case turn
+    /// Delayed turn - turn that starts after the main note.
+    case delayedTurn
+    /// Inverted turn - main note, note below, main note, note above, main note.
+    case invertedTurn
+    /// Delayed inverted turn.
+    case delayedInvertedTurn
+    /// Vertical turn.
+    case verticalTurn
+    /// Shake - a type of trill.
+    case shake
+    /// Mordent (upper) - rapid alternation: main, upper, main.
+    case mordent
+    /// Inverted mordent (lower) - rapid alternation: main, lower, main.
+    case invertedMordent
+    /// Schleifer - Baroque slide ornament.
+    case schleifer
+    /// Tremolo - rapid repetition of a single note or alternation between two.
+    case tremolo
+    /// Appoggiatura - grace note that takes time from the main note.
+    case appoggiatura
+    /// Acciaccatura - crushed grace note played quickly before the beat.
+    case acciaccatura
+
+    /// Creates an OrnamentType from a MusicXML element name.
+    public init?(musicXMLName: String) {
+        switch musicXMLName {
+        case "trill-mark": self = .trill
+        case "turn": self = .turn
+        case "delayed-turn": self = .delayedTurn
+        case "inverted-turn": self = .invertedTurn
+        case "delayed-inverted-turn": self = .delayedInvertedTurn
+        case "vertical-turn": self = .verticalTurn
+        case "shake": self = .shake
+        case "mordent": self = .mordent
+        case "inverted-mordent": self = .invertedMordent
+        case "schleifer": self = .schleifer
+        case "tremolo": self = .tremolo
+        default: return nil
+        }
+    }
+
+    /// The MusicXML element name for this ornament.
+    public var musicXMLName: String {
+        switch self {
+        case .trill: return "trill-mark"
+        case .turn: return "turn"
+        case .delayedTurn: return "delayed-turn"
+        case .invertedTurn: return "inverted-turn"
+        case .delayedInvertedTurn: return "delayed-inverted-turn"
+        case .verticalTurn: return "vertical-turn"
+        case .shake: return "shake"
+        case .mordent: return "mordent"
+        case .invertedMordent: return "inverted-mordent"
+        case .schleifer: return "schleifer"
+        case .tremolo: return "tremolo"
+        case .appoggiatura: return "appoggiatura"
+        case .acciaccatura: return "acciaccatura"
+        }
+    }
+}
+
+/// Ornament marking with placement and optional properties.
 public struct Ornament: Codable, Sendable {
-    public var type: String
+    /// The type of ornament.
+    public var type: OrnamentType
+    /// Placement above or below the note.
     public var placement: Placement?
+    /// For trills: whether to show a wavy line extension.
+    public var hasWavyLine: Bool?
+    /// For tremolos: number of tremolo marks (1 = 8th, 2 = 16th, 3 = 32nd).
+    public var tremoloMarks: Int?
+    /// Accidental for the auxiliary note (the note alternated with).
+    public var accidental: Accidental?
 
-    public init(type: String, placement: Placement? = nil) {
+    public init(
+        type: OrnamentType,
+        placement: Placement? = nil,
+        hasWavyLine: Bool? = nil,
+        tremoloMarks: Int? = nil,
+        accidental: Accidental? = nil
+    ) {
         self.type = type
         self.placement = placement
+        self.hasWavyLine = hasWavyLine
+        self.tremoloMarks = tremoloMarks
+        self.accidental = accidental
+    }
+
+    /// Legacy initializer for string-based type (for backwards compatibility).
+    public init(type: String, placement: Placement? = nil) {
+        self.type = OrnamentType(musicXMLName: type) ?? .trill
+        self.placement = placement
+        self.hasWavyLine = nil
+        self.tremoloMarks = nil
+        self.accidental = nil
     }
 }
 
-/// Technical marking (placeholder - expand as needed).
-public struct TechnicalMark: Codable, Sendable {
-    public var type: String
+// MARK: - Technical Markings
 
-    public init(type: String) {
+/// Types of technical markings (instrument-specific performance instructions).
+public enum TechnicalMarkType: String, Codable, Sendable, CaseIterable {
+    // MARK: String Techniques
+    /// Up-bow (strings) - bow moves away from the hand.
+    case upBow
+    /// Down-bow (strings) - bow moves toward the hand.
+    case downBow
+    /// Natural harmonic (strings).
+    case harmonic
+    /// Open string (strings) - played without fingering.
+    case openString
+    /// Stopped note (strings/brass).
+    case stopped
+    /// Snap/Bartók pizzicato (strings) - string snaps against fingerboard.
+    case snapPizzicato
+
+    // MARK: Fingering
+    /// Fingering number (for any instrument).
+    case fingering
+    /// String number indication (strings).
+    case string
+    /// Fret number (fretted strings).
+    case fret
+
+    // MARK: Guitar/Fretted String Techniques
+    /// Hammer-on (guitar) - sound note by hammering finger down.
+    case hammerOn
+    /// Pull-off (guitar) - sound note by pulling finger away.
+    case pullOff
+    /// Bend (guitar) - bend string to raise pitch.
+    case bend
+    /// Tap (guitar) - tap string on fretboard.
+    case tap
+
+    // MARK: Pedal Techniques
+    /// Heel (organ/harp).
+    case heel
+    /// Toe (organ/harp).
+    case toe
+
+    /// Creates a TechnicalMarkType from a MusicXML element name.
+    public init?(musicXMLName: String) {
+        switch musicXMLName {
+        case "up-bow": self = .upBow
+        case "down-bow": self = .downBow
+        case "harmonic": self = .harmonic
+        case "open-string": self = .openString
+        case "stopped": self = .stopped
+        case "snap-pizzicato": self = .snapPizzicato
+        case "fingering": self = .fingering
+        case "string": self = .string
+        case "fret": self = .fret
+        case "hammer-on": self = .hammerOn
+        case "pull-off": self = .pullOff
+        case "bend": self = .bend
+        case "tap": self = .tap
+        case "heel": self = .heel
+        case "toe": self = .toe
+        default: return nil
+        }
+    }
+
+    /// The MusicXML element name for this technical marking.
+    public var musicXMLName: String {
+        switch self {
+        case .upBow: return "up-bow"
+        case .downBow: return "down-bow"
+        case .harmonic: return "harmonic"
+        case .openString: return "open-string"
+        case .stopped: return "stopped"
+        case .snapPizzicato: return "snap-pizzicato"
+        case .fingering: return "fingering"
+        case .string: return "string"
+        case .fret: return "fret"
+        case .hammerOn: return "hammer-on"
+        case .pullOff: return "pull-off"
+        case .bend: return "bend"
+        case .tap: return "tap"
+        case .heel: return "heel"
+        case .toe: return "toe"
+        }
+    }
+}
+
+/// Technical marking with associated value information.
+public struct TechnicalMark: Codable, Sendable {
+    /// The type of technical marking.
+    public var type: TechnicalMarkType
+    /// Placement above or below the note.
+    public var placement: Placement?
+    /// Text value (for fingering: "1", "2", etc.; for string: "I", "II", etc.).
+    public var text: String?
+    /// Numeric value (for fret numbers, string numbers as integers).
+    public var number: Int?
+
+    public init(
+        type: TechnicalMarkType,
+        placement: Placement? = nil,
+        text: String? = nil,
+        number: Int? = nil
+    ) {
         self.type = type
+        self.placement = placement
+        self.text = text
+        self.number = number
+    }
+
+    /// Legacy initializer for string-based type (for backwards compatibility).
+    public init(type: String) {
+        self.type = TechnicalMarkType(musicXMLName: type) ?? .fingering
+        self.placement = nil
+        self.text = nil
+        self.number = nil
     }
 }
 

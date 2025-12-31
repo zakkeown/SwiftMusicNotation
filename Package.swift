@@ -165,6 +165,11 @@ let package = Package(
             path: "Tests/MusicNotationPlaybackTests"
         ),
         .testTarget(
+            name: "MusicNotationRendererTests",
+            dependencies: ["MusicNotationRenderer", "MusicNotationLayout", "MusicNotationCore"],
+            path: "Tests/MusicNotationRendererTests"
+        ),
+        .testTarget(
             name: "MusicXMLValidationTests",
             dependencies: [
                 "MusicNotationCore",

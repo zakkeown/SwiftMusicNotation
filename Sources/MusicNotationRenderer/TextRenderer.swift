@@ -49,7 +49,10 @@ public final class TextRenderer {
             kCTForegroundColorFromContextAttributeName: true
         ]
 
-        let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary)!
+        guard let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary) else {
+            context.restoreGState()
+            return
+        }
         let line = CTLineCreateWithAttributedString(attributedString)
 
         context.textPosition = position
@@ -415,7 +418,9 @@ public final class TextRenderer {
     /// Measures the bounds of text with a CTFont.
     public func measureText(_ text: String, font: CTFont) -> CGRect {
         let attributes: [CFString: Any] = [kCTFontAttributeName: font]
-        let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary)!
+        guard let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary) else {
+            return .zero
+        }
         let line = CTLineCreateWithAttributedString(attributedString)
         let bounds = CTLineGetBoundsWithOptions(line, [])
         return bounds

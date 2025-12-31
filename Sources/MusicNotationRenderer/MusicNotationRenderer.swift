@@ -543,7 +543,10 @@ public final class MusicRenderer: MusicRendererProtocol {
             kCTForegroundColorFromContextAttributeName: true
         ]
 
-        let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary)!
+        guard let attributedString = CFAttributedStringCreate(nil, text as CFString, attributes as CFDictionary) else {
+            context.restoreGState()
+            return
+        }
         let line = CTLineCreateWithAttributedString(attributedString)
 
         var drawPosition = position

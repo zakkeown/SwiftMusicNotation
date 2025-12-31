@@ -514,6 +514,18 @@ public struct BeamGroupBuilder {
         var secondaryBeams: [BeamSegment] = []
         let maxBeams = noteDurations.max() ?? 1
 
+        // Only iterate if there are secondary beams (level 2+)
+        guard maxBeams >= 2 else {
+            return BeamGroupRenderInfo(
+                primaryBeamStart: firstEnd,
+                primaryBeamEnd: CGPoint(x: lastEnd.x, y: firstEnd.y + clampedSlope * dx),
+                beamThickness: config.beamThickness,
+                stemDirection: stemDirection,
+                secondaryBeams: [],
+                slope: clampedSlope
+            )
+        }
+
         for level in 2...maxBeams {
             var currentSegmentStart: Int? = nil
 

@@ -898,28 +898,28 @@ public final class MusicXMLExporter {
                     if let placement = mark.placement {
                         attrs.add("placement", placement.rawValue)
                     }
-                    builder.writeEmptyElement(mark.type, attributes: attrs.build())
+                    builder.writeEmptyElement(mark.articulation.musicXMLName, attributes: attrs.build())
                 }
             }
 
         case .dynamics(let marks):
             builder.element("dynamics") {
                 for mark in marks {
-                    builder.writeEmptyElement(mark.type)
+                    builder.writeEmptyElement(mark.dynamic.musicXMLName)
                 }
             }
 
         case .ornaments(let orn):
             builder.element("ornaments") {
                 for o in orn {
-                    builder.writeEmptyElement(o.type)
+                    builder.writeEmptyElement(o.type.musicXMLName)
                 }
             }
 
         case .technical(let tech):
             builder.element("technical") {
                 for t in tech {
-                    builder.writeEmptyElement(t.type)
+                    builder.writeEmptyElement(t.type.musicXMLName)
                 }
             }
 

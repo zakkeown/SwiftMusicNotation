@@ -144,15 +144,13 @@ public struct DynamicsInterpreter: Sendable {
             switch notation {
             case .articulations(let marks):
                 for mark in marks {
-                    velocity *= articulationVelocityMultiplier(for: mark.type)
+                    velocity *= articulationVelocityMultiplier(for: mark.articulation.musicXMLName)
                 }
 
             case .dynamics(let marks):
                 // Note-level dynamics override
                 for mark in marks {
-                    if let dynamicLevel = dynamicLevelFromString(mark.type) {
-                        velocity = Double(velocityForLevel(dynamicLevel))
-                    }
+                    velocity = Double(velocityForLevel(mark.dynamic.relativeLoudness))
                 }
 
             case .fermata:

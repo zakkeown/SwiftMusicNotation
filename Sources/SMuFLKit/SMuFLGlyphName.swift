@@ -728,14 +728,20 @@ public enum SMuFLGlyphName: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    /// The Unicode character for this glyph.
-    public var character: Character {
-        Character(UnicodeScalar(codePoint)!)
+    /// The Unicode character for this glyph, if the codepoint is valid.
+    ///
+    /// All SMuFL codepoints are in the valid Unicode Private Use Area (0xE000-0xF8FF),
+    /// so this property should always return a character for valid enum cases.
+    public var character: Character? {
+        guard let scalar = UnicodeScalar(codePoint) else {
+            return nil
+        }
+        return Character(scalar)
     }
 
-    /// The string representation for rendering.
-    public var string: String {
-        String(character)
+    /// The string representation for rendering, if the codepoint is valid.
+    public var string: String? {
+        character.map { String($0) }
     }
 }
 

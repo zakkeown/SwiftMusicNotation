@@ -236,4 +236,111 @@ final class RationalTests: XCTestCase {
         let neg = Rational(-3, 4)
         XCTAssertEqual(neg.description, "-3/4")
     }
+
+    // MARK: - Property Tests
+
+    func testIsZero() {
+        XCTAssertTrue(Rational.zero.isZero)
+        XCTAssertTrue(Rational(0, 5).isZero)
+        XCTAssertFalse(Rational(1, 2).isZero)
+    }
+
+    func testIsPositive() {
+        XCTAssertTrue(Rational(1, 2).isPositive)
+        XCTAssertTrue(Rational(5, 1).isPositive)
+        XCTAssertFalse(Rational.zero.isPositive)
+        XCTAssertFalse(Rational(-1, 2).isPositive)
+    }
+
+    func testIsNegative() {
+        XCTAssertTrue(Rational(-1, 2).isNegative)
+        XCTAssertTrue(Rational(-5, 1).isNegative)
+        XCTAssertFalse(Rational.zero.isNegative)
+        XCTAssertFalse(Rational(1, 2).isNegative)
+    }
+
+    func testIsInteger() {
+        XCTAssertTrue(Rational(5, 1).isInteger)
+        XCTAssertTrue(Rational(10, 2).isInteger) // Reduces to 5/1
+        XCTAssertTrue(Rational.zero.isInteger)
+        XCTAssertFalse(Rational(1, 2).isInteger)
+        XCTAssertFalse(Rational(3, 4).isInteger)
+    }
+
+    func testMagnitude() {
+        XCTAssertEqual(Rational(3, 4).magnitude, Rational(3, 4))
+        XCTAssertEqual(Rational(-3, 4).magnitude, Rational(3, 4))
+        XCTAssertEqual(Rational.zero.magnitude, Rational.zero)
+    }
+
+    func testReciprocal() {
+        XCTAssertEqual(Rational(2, 3).reciprocal, Rational(3, 2))
+        XCTAssertEqual(Rational(1, 4).reciprocal, Rational(4, 1))
+        XCTAssertEqual(Rational(-2, 3).reciprocal, Rational(-3, 2))
+    }
+
+    func testNegation() {
+        XCTAssertEqual(-Rational(1, 2), Rational(-1, 2))
+        XCTAssertEqual(-Rational(-3, 4), Rational(3, 4))
+        XCTAssertEqual(-Rational.zero, Rational.zero)
+    }
+
+    // MARK: - Compound Assignment Tests
+
+    func testAdditionAssignment() {
+        var a = Rational(1, 4)
+        a += Rational(1, 4)
+        XCTAssertEqual(a, Rational(1, 2))
+    }
+
+    func testSubtractionAssignment() {
+        var a = Rational(3, 4)
+        a -= Rational(1, 4)
+        XCTAssertEqual(a, Rational(1, 2))
+    }
+
+    func testMultiplicationAssignment() {
+        var a = Rational(2, 3)
+        a *= Rational(3, 4)
+        XCTAssertEqual(a, Rational(1, 2))
+    }
+
+    func testDivisionAssignment() {
+        var a = Rational(1, 2)
+        a /= Rational(1, 4)
+        XCTAssertEqual(a, Rational(2, 1))
+    }
+
+    // MARK: - Integer Operations Tests
+
+    func testMultiplicationWithInt() {
+        XCTAssertEqual(Rational(1, 4) * 2, Rational(1, 2))
+        XCTAssertEqual(2 * Rational(1, 4), Rational(1, 2))
+        XCTAssertEqual(Rational(1, 3) * 3, Rational(1, 1))
+    }
+
+    func testDivisionByInt() {
+        XCTAssertEqual(Rational(1, 2) / 2, Rational(1, 4))
+        XCTAssertEqual(Rational(3, 4) / 3, Rational(1, 4))
+    }
+
+    // MARK: - ExpressibleByIntegerLiteral Tests
+
+    func testIntegerLiteral() {
+        let r: Rational = 5
+        XCTAssertEqual(r, Rational(5, 1))
+    }
+
+    // MARK: - Hashable Tests
+
+    func testHashable() {
+        let a = Rational(1, 2)
+        let b = Rational(2, 4)  // Same value
+
+        var set = Set<Rational>()
+        set.insert(a)
+        set.insert(b)
+
+        XCTAssertEqual(set.count, 1)  // Should be the same value
+    }
 }
