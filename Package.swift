@@ -42,6 +42,10 @@ let package = Package(
             name: "MusicNotationPlayback",
             targets: ["MusicNotationPlayback"]
         ),
+        .library(
+            name: "MIDIImport",
+            targets: ["MIDIImport"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/CoreOffice/XMLCoder.git", from: "0.17.0"),
@@ -117,6 +121,13 @@ let package = Package(
             path: "Sources/MusicNotationPlayback"
         ),
 
+        // MARK: - MIDI Import
+        .target(
+            name: "MIDIImport",
+            dependencies: ["MusicNotationCore"],
+            path: "Sources/MIDIImport"
+        ),
+
         // MARK: - Umbrella Target
         .target(
             name: "SwiftMusicNotation",
@@ -127,7 +138,8 @@ let package = Package(
                 "MusicXMLExport",
                 "MusicNotationLayout",
                 "MusicNotationRenderer",
-                "MusicNotationPlayback"
+                "MusicNotationPlayback",
+                "MIDIImport"
             ],
             path: "Sources/SwiftMusicNotation"
         ),
@@ -168,6 +180,11 @@ let package = Package(
             name: "MusicNotationRendererTests",
             dependencies: ["MusicNotationRenderer", "MusicNotationLayout", "MusicNotationCore"],
             path: "Tests/MusicNotationRendererTests"
+        ),
+        .testTarget(
+            name: "MIDIImportTests",
+            dependencies: ["MIDIImport", "MusicNotationCore"],
+            path: "Tests/MIDIImportTests"
         ),
         .testTarget(
             name: "MusicXMLValidationTests",

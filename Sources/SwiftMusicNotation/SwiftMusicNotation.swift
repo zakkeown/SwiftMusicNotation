@@ -8,3 +8,4 @@
 @_exported import MusicNotationLayout
 @_exported import MusicNotationRenderer
 @_exported import MusicNotationPlayback
+@_exported import MIDIImport
