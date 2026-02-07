@@ -24,6 +24,29 @@ public struct GlyphBoundingBox: Codable, Hashable, Sendable {
     /// The y-coordinate of the top-right corner.
     public let northEastY: StaffSpaces
 
+    private enum CodingKeys: String, CodingKey {
+        case bBoxSW, bBoxNE
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let sw = try container.decode([CGFloat].self, forKey: .bBoxSW)
+        let ne = try container.decode([CGFloat].self, forKey: .bBoxNE)
+        guard sw.count >= 2, ne.count >= 2 else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "bBox arrays must have >= 2 elements"))
+        }
+        self.southWestX = sw[0]
+        self.southWestY = sw[1]
+        self.northEastX = ne[0]
+        self.northEastY = ne[1]
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode([southWestX, southWestY], forKey: .bBoxSW)
+        try container.encode([northEastX, northEastY], forKey: .bBoxNE)
+    }
+
     /// Creates a bounding box from SMuFL JSON format [swX, swY], [neX, neY].
     public init(bBoxSW: [CGFloat], bBoxNE: [CGFloat]) {
         precondition(bBoxSW.count >= 2, "bBoxSW must have at least 2 elements")

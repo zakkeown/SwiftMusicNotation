@@ -246,8 +246,10 @@ public struct MacScoreViewRepresentable: NSViewRepresentable {
         let scoreView = ScoreView(frame: scrollView.bounds)
         scoreView.selectionDelegate = context.coordinator
 
-        if let font = font {
-            scoreView.loadFont(font)
+        // Load font: use provided font, or auto-load bundled Bravura
+        let loadedFont = font ?? (try? SMuFLFontManager.shared.loadBundledFont())
+        if let loadedFont {
+            scoreView.loadFont(loadedFont)
         }
 
         scrollView.documentView = scoreView
@@ -258,10 +260,11 @@ public struct MacScoreViewRepresentable: NSViewRepresentable {
     public func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let scoreView = nsView.documentView as? ScoreView else { return }
 
-        // Update score if changed
+        // Update score if changed, or relayout if layoutContext changed
         if let score = score {
-            if scoreView.score !== score {
+            if scoreView.score !== score || context.coordinator.lastLayoutContext != layoutContext {
                 scoreView.setScore(score, layoutContext: layoutContext)
+                context.coordinator.lastLayoutContext = layoutContext
             }
         }
 
@@ -276,8 +279,11 @@ public struct MacScoreViewRepresentable: NSViewRepresentable {
         }
 
         // Update font if needed
-        if let font = font, scoreView.renderState.font == nil {
-            scoreView.loadFont(font)
+        if scoreView.renderState.font == nil {
+            let loadedFont = font ?? (try? SMuFLFontManager.shared.loadBundledFont())
+            if let loadedFont {
+                scoreView.loadFont(loadedFont)
+            }
         }
     }
 
@@ -287,6 +293,7 @@ public struct MacScoreViewRepresentable: NSViewRepresentable {
 
     public class Coordinator: NSObject, ScoreSelectionDelegate {
         var parent: MacScoreViewRepresentable
+        var lastLayoutContext: LayoutContext?
 
         init(_ parent: MacScoreViewRepresentable) {
             self.parent = parent
@@ -346,18 +353,21 @@ public struct IOSScoreViewRepresentable: UIViewRepresentable {
         let scoreView = ScoreView(frame: .zero)
         scoreView.selectionDelegate = context.coordinator
 
-        if let font = font {
-            scoreView.loadFont(font)
+        // Load font: use provided font, or auto-load bundled Bravura
+        let loadedFont = font ?? (try? SMuFLFontManager.shared.loadBundledFont())
+        if let loadedFont {
+            scoreView.loadFont(loadedFont)
         }
 
         return scoreView
     }
 
     public func updateUIView(_ uiView: ScoreView, context: Context) {
-        // Update score if changed
+        // Update score if changed, or relayout if layoutContext changed
         if let score = score {
-            if uiView.score !== score {
+            if uiView.score !== score || context.coordinator.lastLayoutContext != layoutContext {
                 uiView.setScore(score, layoutContext: layoutContext)
+                context.coordinator.lastLayoutContext = layoutContext
             }
         }
 
@@ -383,6 +393,7 @@ public struct IOSScoreViewRepresentable: UIViewRepresentable {
 
     public class Coordinator: NSObject, ScoreSelectionDelegate {
         var parent: IOSScoreViewRepresentable
+        var lastLayoutContext: LayoutContext?
 
         init(_ parent: IOSScoreViewRepresentable) {
             self.parent = parent

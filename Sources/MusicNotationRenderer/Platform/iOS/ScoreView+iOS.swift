@@ -77,7 +77,7 @@ public final class ScoreView: UIScrollView, ScoreViewProtocol, UIScrollViewDeleg
     }
 
     // ScoreViewProtocol conformance
-    public var backgroundColor_: CGColor {
+    public var scoreBackgroundColor: CGColor {
         get { backgroundColorCG }
         set { backgroundColorCG = newValue }
     }
@@ -204,14 +204,14 @@ public final class ScoreView: UIScrollView, ScoreViewProtocol, UIScrollViewDeleg
         let visibleSize = bounds.size
         let margin = configuration.contentMargin * 2
 
-        let scaleX = (visibleSize.width - margin) / page.size.width
-        let scaleY = (visibleSize.height - margin) / page.size.height
+        let scaleX = (visibleSize.width - margin) / page.frame.width
+        let scaleY = (visibleSize.height - margin) / page.frame.height
 
         let targetZoom = min(scaleX, scaleY)
         setZoomScale(targetZoom, animated: true)
 
         // Scroll to page
-        let offset = CGPoint(x: 0, y: page.origin.y * targetZoom)
+        let offset = CGPoint(x: 0, y: page.frame.origin.y * targetZoom)
         setContentOffset(offset, animated: true)
     }
 
@@ -222,17 +222,15 @@ public final class ScoreView: UIScrollView, ScoreViewProtocol, UIScrollViewDeleg
         // Find the measure in the engraved score
         for page in engraved.pages {
             for system in page.systems {
-                for staff in system.staves where staff.partIndex == partIndex {
-                    for measure in staff.measures where measure.measureNumber == measureNumber {
-                        let measureRect = CGRect(
-                            x: (measure.frame.origin.x + system.origin.x + page.origin.x) * zoomScale,
-                            y: (measure.frame.origin.y + system.origin.y + page.origin.y) * zoomScale,
-                            width: measure.frame.width * zoomScale,
-                            height: measure.frame.height * zoomScale
-                        )
-                        scrollRectToVisible(measureRect, animated: true)
-                        return
-                    }
+                for measure in system.measures where measure.measureNumber == measureNumber {
+                    let measureRect = CGRect(
+                        x: (measure.frame.origin.x + system.frame.origin.x + page.frame.origin.x) * zoomScale,
+                        y: (measure.frame.origin.y + system.frame.origin.y + page.frame.origin.y) * zoomScale,
+                        width: measure.frame.width * zoomScale,
+                        height: measure.frame.height * zoomScale
+                    )
+                    scrollRectToVisible(measureRect, animated: true)
+                    return
                 }
             }
         }
@@ -397,72 +395,15 @@ private class ScoreContentView: UIView {
     }
 
     private func drawScore(in context: CGContext, scoreView: ScoreView) {
-        guard let engraved = scoreView.engravedScore,
-              let renderState = renderState else { return }
+        guard let engraved = scoreView.engravedScore else { return }
 
-        let config = scoreView.configuration
+        // Use MusicRenderer for full notation rendering
+        let renderer = MusicRenderer()
+        renderer.font = renderState?.font
 
-        // Draw each page
-        for page in engraved.pages {
-            context.saveGState()
-            context.translateBy(x: page.origin.x + config.contentMargin, y: page.origin.y + config.contentMargin)
-
-            // Draw page background
-            if config.showPageShadow {
-                context.setShadow(offset: CGSize(width: 2, height: 2), blur: 5, color: UIColor.black.withAlphaComponent(0.2).cgColor)
-            }
-
-            context.setFillColor(UIColor.white.cgColor)
-            context.fill(CGRect(origin: .zero, size: page.size))
-            context.setShadow(offset: .zero, blur: 0)
-
-            // Draw systems
-            for system in page.systems {
-                drawSystem(system, renderState: renderState, foregroundColor: scoreView.foregroundColor, in: context)
-            }
-
-            context.restoreGState()
+        for pageIndex in 0..<engraved.pages.count {
+            renderer.render(score: engraved, pageIndex: pageIndex, in: context)
         }
-    }
-
-    private func drawSystem(_ system: EngravedSystem, renderState: ScoreRenderState, foregroundColor: CGColor, in context: CGContext) {
-        context.saveGState()
-        context.translateBy(x: system.origin.x, y: system.origin.y)
-
-        for staff in system.staves {
-            drawStaff(staff, renderState: renderState, foregroundColor: foregroundColor, in: context)
-        }
-
-        context.restoreGState()
-    }
-
-    private func drawStaff(_ staff: EngravedStaff, renderState: ScoreRenderState, foregroundColor: CGColor, in context: CGContext) {
-        guard let staffRenderer = renderState.staffRenderer else { return }
-
-        context.saveGState()
-        context.translateBy(x: staff.origin.x, y: staff.origin.y)
-
-        let staffSpacing = renderState.staffHeight / 4
-        staffRenderer.renderStaffLines(
-            at: .zero,
-            width: staff.width,
-            lineCount: 5,
-            staffSpacing: staffSpacing,
-            color: foregroundColor,
-            in: context
-        )
-
-        for measure in staff.measures {
-            staffRenderer.renderBarline(
-                at: measure.frame.origin.x + measure.frame.width,
-                topY: 0,
-                bottomY: staffSpacing * 4,
-                color: foregroundColor,
-                in: context
-            )
-        }
-
-        context.restoreGState()
     }
 
     private func drawSelectionHighlights(in context: CGContext, scoreView: ScoreView) {

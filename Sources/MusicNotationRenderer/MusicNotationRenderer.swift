@@ -311,6 +311,27 @@ public final class MusicRenderer: MusicRendererProtocol {
             }
         }
 
+        // Render beam groups
+        for beamGroup in measure.beamGroups {
+            renderBeamGroup(beamGroup, in: context, renderContext: renderContext)
+        }
+
+        context.restoreGState()
+    }
+
+    private func renderBeamGroup(_ beam: EngravedBeamGroup, in context: CGContext, renderContext: RenderContext) {
+        context.saveGState()
+        context.setFillColor(config.noteColor)
+
+        let halfThick = beam.thickness / 2
+
+        context.move(to: CGPoint(x: beam.startPoint.x, y: beam.startPoint.y - halfThick))
+        context.addLine(to: CGPoint(x: beam.endPoint.x, y: beam.endPoint.y - halfThick))
+        context.addLine(to: CGPoint(x: beam.endPoint.x, y: beam.endPoint.y + halfThick))
+        context.addLine(to: CGPoint(x: beam.startPoint.x, y: beam.startPoint.y + halfThick))
+        context.closePath()
+        context.fillPath()
+
         context.restoreGState()
     }
 
@@ -392,11 +413,11 @@ public final class MusicRenderer: MusicRendererProtocol {
                 x: note.position.x + note.accidentalOffset,
                 y: note.position.y
             )
-            renderGlyph(accidentalGlyph, at: accidentalPos, font: font, in: context)
+            renderGlyph(accidentalGlyph, at: accidentalPos, font: font, in: context, renderContext: renderContext)
         }
 
         // Render notehead
-        renderGlyph(note.noteheadGlyph, at: note.position, font: font, in: context)
+        renderGlyph(note.noteheadGlyph, at: note.position, font: font, in: context, renderContext: renderContext)
 
         // Render stem
         if let stem = note.stem {
@@ -405,19 +426,19 @@ public final class MusicRenderer: MusicRendererProtocol {
 
         // Render flag
         if let flagGlyph = note.flagGlyph, let stem = note.stem {
-            let flagPos = stem.direction == .up ? stem.end : stem.start
-            renderGlyph(flagGlyph, at: flagPos, font: font, in: context)
+            let flagPos = stem.end
+            renderGlyph(flagGlyph, at: flagPos, font: font, in: context, renderContext: renderContext)
         }
 
         // Render dots
         for dotPos in note.dots {
-            renderGlyph(.augmentationDot, at: dotPos, font: font, in: context)
+            renderGlyph(.augmentationDot, at: dotPos, font: font, in: context, renderContext: renderContext)
         }
     }
 
     private func renderRest(_ rest: EngravedRest, in context: CGContext, renderContext: RenderContext) {
         guard let font = renderContext.font else { return }
-        renderGlyph(rest.glyph, at: rest.position, font: font, in: context)
+        renderGlyph(rest.glyph, at: rest.position, font: font, in: context, renderContext: renderContext)
     }
 
     private func renderChord(_ chord: EngravedChord, in context: CGContext, renderContext: RenderContext) {
@@ -429,13 +450,13 @@ public final class MusicRenderer: MusicRendererProtocol {
 
     private func renderClef(_ clef: EngravedClef, in context: CGContext, renderContext: RenderContext) {
         guard let font = renderContext.font else { return }
-        renderGlyph(clef.glyph, at: clef.position, font: font, in: context)
+        renderGlyph(clef.glyph, at: clef.position, font: font, in: context, renderContext: renderContext)
     }
 
     private func renderKeySignature(_ keySig: EngravedKeySignature, in context: CGContext, renderContext: RenderContext) {
         guard let font = renderContext.font else { return }
         for (glyph, position) in keySig.accidentals {
-            renderGlyph(glyph, at: position, font: font, in: context)
+            renderGlyph(glyph, at: position, font: font, in: context, renderContext: renderContext)
         }
     }
 
@@ -444,14 +465,14 @@ public final class MusicRenderer: MusicRendererProtocol {
 
         // Render symbol if present (common/cut time)
         if let symbolGlyph = timeSig.symbolGlyph {
-            renderGlyph(symbolGlyph, at: timeSig.position, font: font, in: context)
+            renderGlyph(symbolGlyph, at: timeSig.position, font: font, in: context, renderContext: renderContext)
         } else {
             // Render numerator and denominator
             for (glyph, position) in timeSig.topGlyphs {
-                renderGlyph(glyph, at: position, font: font, in: context)
+                renderGlyph(glyph, at: position, font: font, in: context, renderContext: renderContext)
             }
             for (glyph, position) in timeSig.bottomGlyphs {
-                renderGlyph(glyph, at: position, font: font, in: context)
+                renderGlyph(glyph, at: position, font: font, in: context, renderContext: renderContext)
             }
         }
     }
@@ -464,7 +485,7 @@ public final class MusicRenderer: MusicRendererProtocol {
             renderText(text, at: direction.position, fontSize: 12, in: context)
 
         case .dynamic(let glyph):
-            renderGlyph(glyph, at: direction.position, font: font, in: context)
+            renderGlyph(glyph, at: direction.position, font: font, in: context, renderContext: renderContext)
 
         case .wedge(let wedge):
             renderWedge(wedge, at: direction.position.y, in: context, renderContext: renderContext)
@@ -516,22 +537,26 @@ public final class MusicRenderer: MusicRendererProtocol {
 
     // MARK: - Primitive Rendering
 
-    private func renderGlyph(_ glyphName: SMuFLGlyphName, at position: CGPoint, font: LoadedSMuFLFont, in context: CGContext) {
-        let ctFont = font.ctFont
+    private func renderGlyph(_ glyphName: SMuFLGlyphName, at position: CGPoint, font: LoadedSMuFLFont, in context: CGContext, renderContext: RenderContext) {
+        guard let glyphString = glyphName.string else { return }
 
-        // Get glyph name as string
-        let glyphNameString = glyphName.rawValue as CFString
-        var glyph = CTFontGetGlyphWithName(ctFont, glyphNameString)
+        let sizedFont = font.font(forStaffHeight: renderContext.scaling.staffHeightPoints)
 
-        if glyph != 0 {
-            context.saveGState()
-            context.setFillColor(config.noteColor)
+        let attributes: [CFString: Any] = [
+            kCTFontAttributeName: sizedFont,
+            kCTForegroundColorFromContextAttributeName: true
+        ]
 
-            var glyphPosition = position
-            CTFontDrawGlyphs(ctFont, &glyph, &glyphPosition, 1, context)
+        guard let attributedString = CFAttributedStringCreate(nil, glyphString as CFString, attributes as CFDictionary) else { return }
+        let line = CTLineCreateWithAttributedString(attributedString)
 
-            context.restoreGState()
-        }
+        context.saveGState()
+        context.setFillColor(config.noteColor)
+        context.translateBy(x: position.x, y: position.y)
+        context.scaleBy(x: 1, y: -1)
+        context.textPosition = .zero
+        CTLineDraw(line, context)
+        context.restoreGState()
     }
 
     private func renderText(_ text: String, at position: CGPoint, fontSize: CGFloat, alignment: Justification? = nil, in context: CGContext) {
@@ -564,7 +589,12 @@ public final class MusicRenderer: MusicRendererProtocol {
             }
         }
 
-        context.textPosition = drawPosition
+        // Core Text renders text bottom-up, but our context is flipped (top-left origin).
+        // Locally flip at the text position so the text draws right-side up.
+        context.translateBy(x: drawPosition.x, y: drawPosition.y)
+        context.scaleBy(x: 1, y: -1)
+
+        context.textPosition = .zero
         context.setFillColor(config.noteColor)
         CTLineDraw(line, context)
 

@@ -224,13 +224,17 @@ public struct EngravedMeasure: Sendable {
     /// Time slots (rhythmic columns) in this measure.
     public var timeSlots: [TimeSlot]
 
+    /// Beam groups connecting notes in this measure.
+    public var beamGroups: [EngravedBeamGroup]
+
     public init(
         measureNumber: Int = 1,
         frame: CGRect = .zero,
         leftBarlineX: CGFloat = 0,
         rightBarlineX: CGFloat = 0,
         elementsByStaff: [Int: [EngravedElement]] = [:],
-        timeSlots: [TimeSlot] = []
+        timeSlots: [TimeSlot] = [],
+        beamGroups: [EngravedBeamGroup] = []
     ) {
         self.measureNumber = measureNumber
         self.frame = frame
@@ -238,6 +242,7 @@ public struct EngravedMeasure: Sendable {
         self.rightBarlineX = rightBarlineX
         self.elementsByStaff = elementsByStaff
         self.timeSlots = timeSlots
+        self.beamGroups = beamGroups
     }
 }
 
@@ -422,6 +427,48 @@ public struct EngravedChord: Sendable {
         self.stem = stem
         self.flagGlyph = flagGlyph
         self.boundingBox = boundingBox
+    }
+}
+
+// MARK: - Engraved Beam Group
+
+/// A beam connecting a group of notes.
+///
+/// Layout-level geometry for a primary beam line. This is computed by the layout
+/// engine and consumed by the renderer to draw beam lines connecting note stems.
+public struct EngravedBeamGroup: Sendable {
+    /// Left end of the primary beam.
+    public var startPoint: CGPoint
+
+    /// Right end of the primary beam.
+    public var endPoint: CGPoint
+
+    /// Beam thickness in points.
+    public var thickness: CGFloat
+
+    /// Beam slope (dy/dx).
+    public var slope: CGFloat
+
+    /// Direction of stems in this beam group.
+    public var stemDirection: StemDirection
+
+    /// Staff number this beam group belongs to.
+    public var staffNumber: Int
+
+    public init(
+        startPoint: CGPoint,
+        endPoint: CGPoint,
+        thickness: CGFloat,
+        slope: CGFloat,
+        stemDirection: StemDirection,
+        staffNumber: Int = 1
+    ) {
+        self.startPoint = startPoint
+        self.endPoint = endPoint
+        self.thickness = thickness
+        self.slope = slope
+        self.stemDirection = stemDirection
+        self.staffNumber = staffNumber
     }
 }
 

@@ -241,10 +241,14 @@ public struct SpacingConfiguration: Sendable {
     public var barlineWidth: CGFloat = 1.0
 
     /// Padding at start of measure.
-    public var measureLeftPadding: CGFloat = 4.0
+    public var measureLeftPadding: CGFloat = 16.0
 
     /// Padding at end of measure.
-    public var measureRightPadding: CGFloat = 4.0
+    public var measureRightPadding: CGFloat = 16.0
+
+    /// Minimum width for any measure, preventing excessive crowding on wide displays.
+    /// Set to 0 to disable. Default: 150 points.
+    public var minimumMeasureWidth: CGFloat = 175.0
 
     public init() {}
 }

@@ -93,6 +93,21 @@ public final class SMuFLFontManager: @unchecked Sendable {
 
     // MARK: - Public API
 
+    /// Loads the bundled Bravura font from the SMuFLKit module resources.
+    ///
+    /// This is the easiest way to get started — no need to find the correct bundle:
+    ///
+    /// ```swift
+    /// let font = try SMuFLFontManager.shared.loadBundledFont()
+    /// ```
+    ///
+    /// - Parameter fontName: The font name. Defaults to `"Bravura"`.
+    /// - Returns: The loaded font ready for rendering.
+    @discardableResult
+    public func loadBundledFont(named fontName: String = "Bravura") throws -> LoadedSMuFLFont {
+        try loadFont(named: fontName, from: Bundle.module)
+    }
+
     /// The currently active font, or `nil` if no font has been loaded.
     ///
     /// After loading a font with `loadFont(named:from:)`, it automatically
@@ -150,25 +165,34 @@ public final class SMuFLFontManager: @unchecked Sendable {
             return cached
         }
 
-        // Find font file
+        // Find font file (check root, then Fonts/<name> subdirectory)
         guard let fontURL = bundle.url(forResource: fontName, withExtension: "otf")
-            ?? bundle.url(forResource: fontName, withExtension: "ttf") else {
+            ?? bundle.url(forResource: fontName, withExtension: "ttf")
+            ?? bundle.url(forResource: fontName, withExtension: "otf", subdirectory: "Fonts/\(fontName)")
+            ?? bundle.url(forResource: fontName, withExtension: "ttf", subdirectory: "Fonts/\(fontName)") else {
             throw SMuFLFontError.fontFileNotFound(fontName)
         }
 
-        // Find metadata file
+        // Find metadata file (check root, then Fonts/<name> subdirectory)
         let metadataURL = bundle.url(forResource: "\(fontName.lowercased())_metadata", withExtension: "json")
             ?? bundle.url(forResource: "\(fontName)_metadata", withExtension: "json")
+            ?? bundle.url(forResource: "\(fontName.lowercased())_metadata", withExtension: "json",
+                         subdirectory: "Fonts/\(fontName)")
             ?? bundle.url(forResource: "metadata", withExtension: "json",
                          subdirectory: "Fonts/\(fontName)")
 
         // Register font with Core Text
         var error: Unmanaged<CFError>?
-        guard CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &error) else {
+        if !CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &error) {
+            // Error code 105 = font already registered — that's fine, proceed
             if let cfError = error?.takeRetainedValue() {
-                throw SMuFLFontError.fontRegistrationFailed(fontName, cfError as Error)
+                let nsError = cfError as Error as NSError
+                if nsError.code != 105 {
+                    throw SMuFLFontError.fontRegistrationFailed(fontName, cfError as Error)
+                }
+            } else {
+                throw SMuFLFontError.fontRegistrationFailed(fontName, nil)
             }
-            throw SMuFLFontError.fontRegistrationFailed(fontName, nil)
         }
 
         // Create CTFont
@@ -179,10 +203,10 @@ public final class SMuFLFontManager: @unchecked Sendable {
 
         let ctFont = CTFontCreateWithFontDescriptor(descriptor, 0, nil)
 
-        // Load metadata if available
+        // Load metadata if available (non-fatal — font works without metadata)
         var metadata: SMuFLFontMetadata?
         if let metadataURL = metadataURL {
-            metadata = try loadMetadata(from: metadataURL)
+            metadata = try? loadMetadata(from: metadataURL)
         }
 
         let loadedFont = LoadedSMuFLFont(
@@ -506,8 +530,29 @@ public struct SMuFLFontMetadata: Codable, Sendable {
     /// The font name as specified in the metadata file.
     public let fontName: String?
 
-    /// The font version string.
-    public let fontVersion: String?
+    /// The font version (may be a string or number in the JSON).
+    public let fontVersion: FontVersion?
+
+    /// Wrapper that decodes either a JSON string or number into a string.
+    public struct FontVersion: Codable, Sendable {
+        public let value: String
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let s = try? container.decode(String.self) {
+                value = s
+            } else if let d = try? container.decode(Double.self) {
+                value = String(d)
+            } else {
+                value = ""
+            }
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(value)
+        }
+    }
 
     /// The design size in decipoints (1/720 inch).
     public let designSize: Int?

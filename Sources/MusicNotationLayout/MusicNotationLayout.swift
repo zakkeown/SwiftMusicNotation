@@ -179,8 +179,11 @@ public final class LayoutEngine: LayoutEngineProtocol {
             PartStaffInfo(staffCount: part.staffCount)
         }
 
+        // Compute inherited divisions (MusicXML convention: divisions carry forward)
+        let inheritedDivisions = computeInheritedDivisions(from: score)
+
         // Compute measure widths
-        let measureWidths = computeMeasureWidths(score: score, scaling: scaling)
+        let measureWidths = computeMeasureWidths(score: score, scaling: scaling, inheritedDivisions: inheritedDivisions)
 
         // Compute system breaks
         let systemWidth = context.pageSize.width - context.margins.left - context.margins.right
@@ -221,6 +224,7 @@ public final class LayoutEngine: LayoutEngineProtocol {
                 systemHeights: systemHeights,
                 staffPositions: staffPositions,
                 measureWidths: measureWidths,
+                inheritedDivisions: inheritedDivisions,
                 score: score,
                 context: context,
                 scaling: scaling
@@ -244,12 +248,24 @@ public final class LayoutEngine: LayoutEngineProtocol {
         return ScalingContext(staffHeightPoints: context.staffHeight)
     }
 
-    private func computeMeasureWidths(score: Score, scaling: ScalingContext) -> [CGFloat] {
+    /// Computes inherited divisions for each measure (MusicXML convention: divisions carry forward).
+    private func computeInheritedDivisions(from score: Score) -> [Int] {
+        guard let firstPart = score.parts.first else { return [] }
+        var lastDiv = 1
+        return firstPart.measures.map { measure in
+            if let div = measure.attributes?.divisions {
+                lastDiv = div
+            }
+            return lastDiv
+        }
+    }
+
+    private func computeMeasureWidths(score: Score, scaling: ScalingContext, inheritedDivisions: [Int]) -> [CGFloat] {
         guard let firstPart = score.parts.first else { return [] }
 
         return firstPart.measures.enumerated().map { index, measure in
             let elements = extractSpacingElements(from: measure)
-            let divisions = measure.attributes?.divisions ?? 1
+            let divisions = inheritedDivisions[index]
             let measureDuration = computeMeasureDuration(measure: measure, divisions: divisions)
 
             let result = horizontalSpacing.computeSpacing(
@@ -261,11 +277,14 @@ public final class LayoutEngine: LayoutEngineProtocol {
             // Add extra width for first measure (clef, key, time)
             let isFirstMeasure = index == 0
             var width = result.totalWidth
+            var prefixWidth: CGFloat = 0
 
             if isFirstMeasure {
-                width += config.clefWidth + config.keySignatureWidth + config.timeSignatureWidth
+                prefixWidth = config.clefWidth + config.keySignatureWidth + config.timeSignatureWidth
+                width += prefixWidth
             }
 
+            width = max(width, config.spacingConfig.minimumMeasureWidth + prefixWidth)
             return width
         }
     }
@@ -331,6 +350,7 @@ public final class LayoutEngine: LayoutEngineProtocol {
         systemHeights: [CGFloat],
         staffPositions: [StaffPositionInfo],
         measureWidths: [CGFloat],
+        inheritedDivisions: [Int],
         score: Score,
         context: LayoutContext,
         scaling: ScalingContext
@@ -356,6 +376,7 @@ public final class LayoutEngine: LayoutEngineProtocol {
                 systemBreak: systemBreak,
                 staffPositions: staffPositions,
                 measureWidths: measureWidths,
+                inheritedDivisions: inheritedDivisions,
                 score: score,
                 systemFrame: CGRect(
                     x: context.margins.left,
@@ -389,6 +410,7 @@ public final class LayoutEngine: LayoutEngineProtocol {
         systemBreak: SystemBreak,
         staffPositions: [StaffPositionInfo],
         measureWidths: [CGFloat],
+        inheritedDivisions: [Int],
         score: Score,
         systemFrame: CGRect,
         scaling: ScalingContext
@@ -412,28 +434,644 @@ public final class LayoutEngine: LayoutEngineProtocol {
             staves.append(staff)
         }
 
-        // Build measures
+        // Compute the staff extent height (just the staves, no system padding)
+        // This is used for barline height — barlines should span only the staff area.
+        let staffExtentHeight: CGFloat
+        if let first = staves.first, let last = staves.last {
+            staffExtentHeight = last.frame.maxY - first.frame.minY
+        } else {
+            staffExtentHeight = systemFrame.height
+        }
+
+        // Build measures with engraved elements
+        // Justify measure widths to fill the system width.
+        // The first measure's prefix (clef + key sig + time sig) is fixed overhead —
+        // only scale the content portions so all measures get equal content space.
+        let measureRange = systemBreak.startMeasure...systemBreak.endMeasure
+        let totalPrefixWidth: CGFloat = (measureRange.contains(0) && systemIndex == 0)
+            ? config.clefWidth + config.keySignatureWidth + config.timeSignatureWidth
+            : 0
+        let naturalTotal = measureRange.reduce(CGFloat(0)) { $0 + measureWidths[$1] }
+        let contentTotal = naturalTotal - totalPrefixWidth
+        let availableForContent = systemFrame.width - totalPrefixWidth
+        let justificationRatio = contentTotal > 0 ? availableForContent / contentTotal : 1.0
+
         var measures: [EngravedMeasure] = []
         var measureX: CGFloat = 0
 
-        for measureIndex in systemBreak.startMeasure...systemBreak.endMeasure {
-            let width = measureWidths[measureIndex]
+        for measureIndex in measureRange {
+            let measurePrefix: CGFloat = (measureIndex == 0 && systemIndex == 0)
+                ? config.clefWidth + config.keySignatureWidth + config.timeSignatureWidth
+                : 0
+            let contentWidth = measureWidths[measureIndex] - measurePrefix
+            let justifiedWidth = contentWidth * justificationRatio + measurePrefix
+            let isFirstInScore = (measureIndex == 0 && systemIndex == 0)
+            let isFirstInSystem = (measureIndex == systemBreak.startMeasure)
+            let divisions = inheritedDivisions[measureIndex]
+
+            var elementsByStaff: [Int: [EngravedElement]] = [:]
+            var beamGroups: [EngravedBeamGroup] = []
+
+            if let firstPart = score.parts.first,
+               measureIndex < firstPart.measures.count {
+                let sourceMeasure = firstPart.measures[measureIndex]
+                let result = engraveElements(
+                    in: sourceMeasure,
+                    measureIndex: measureIndex,
+                    divisions: divisions,
+                    isFirstInSystem: isFirstInSystem,
+                    isFirstInScore: isFirstInScore,
+                    staves: staves,
+                    scaling: scaling,
+                    targetWidth: justifiedWidth
+                )
+                elementsByStaff = result.0
+                beamGroups = result.1
+            }
+
             let measure = EngravedMeasure(
                 measureNumber: measureIndex + 1,
-                frame: CGRect(x: measureX, y: 0, width: width, height: systemFrame.height),
+                frame: CGRect(x: measureX, y: 0, width: justifiedWidth, height: staffExtentHeight),
                 leftBarlineX: measureX,
-                rightBarlineX: measureX + width
+                rightBarlineX: measureX + justifiedWidth,
+                elementsByStaff: elementsByStaff,
+                beamGroups: beamGroups
             )
             measures.append(measure)
-            measureX += width
+            measureX += justifiedWidth
+        }
+
+        // Opening barline at the left edge of the system
+        var systemBarlines: [EngravedSystemBarline] = []
+        if let firstStaff = staves.first, let lastStaff = staves.last {
+            systemBarlines.append(EngravedSystemBarline(
+                x: 0,
+                topY: firstStaff.frame.minY,
+                bottomY: lastStaff.frame.maxY,
+                style: .regular
+            ))
         }
 
         return EngravedSystem(
             frame: systemFrame,
             staves: staves,
             measures: measures,
+            systemBarlines: systemBarlines,
             measureRange: (systemBreak.startMeasure + 1)...(systemBreak.endMeasure + 1)
         )
+    }
+
+    // MARK: - Element Engraving
+
+    // MARK: - Beam Tracker
+
+    /// Tracks active beam groups as notes are processed sequentially.
+    private struct BeamTracker {
+        struct PendingGroup {
+            var elementIndices: [Int]  // indices into the `elements` array
+            var stemDirection: StemDirection
+        }
+        var active: [Int: PendingGroup] = [:]   // keyed by voice
+        var completed: [PendingGroup] = []
+        /// Indices of beamable notes that had no explicit beam data (candidates for auto-grouping).
+        var unbeamedIndices: [(elementIndex: Int, stemDirection: StemDirection, position: Int)] = []
+
+        mutating func processNote(note: Note, elementIndex: Int, stemDirection: StemDirection, position: Int) {
+            guard !note.isChordTone else { return }
+
+            let isBeamable = note.type == .eighth || note.type == .sixteenth || note.type == .thirtySecond
+
+            if !note.beams.isEmpty {
+                guard let primary = note.beams.first(where: { $0.number == 1 }) else { return }
+                switch primary.value {
+                case .begin:
+                    active[note.voice] = PendingGroup(elementIndices: [elementIndex], stemDirection: stemDirection)
+                case .continue:
+                    active[note.voice]?.elementIndices.append(elementIndex)
+                case .end:
+                    active[note.voice]?.elementIndices.append(elementIndex)
+                    if let group = active.removeValue(forKey: note.voice) { completed.append(group) }
+                case .forwardHook, .backwardHook:
+                    break  // Future: secondary beam hooks
+                }
+            } else if isBeamable {
+                // No explicit beam data — track for auto-grouping
+                unbeamedIndices.append((elementIndex: elementIndex, stemDirection: stemDirection, position: position))
+            }
+        }
+
+        /// Auto-groups unbeamed beamable notes by beat grouping.
+        /// Groups consecutive notes that fall within the same beat group (2 beats in 4/4).
+        mutating func autoGroupUnbeamed(divisions: Int, beatsPerGroup: Int = 2) {
+            guard !unbeamedIndices.isEmpty else { return }
+
+            let divisionsPerGroup = divisions * beatsPerGroup
+            var currentGroup: PendingGroup?
+            var currentGroupBucket = -1
+
+            for entry in unbeamedIndices {
+                let bucket = entry.position / divisionsPerGroup
+                if bucket == currentGroupBucket {
+                    currentGroup?.elementIndices.append(entry.elementIndex)
+                } else {
+                    // Close previous group if it has 2+ notes
+                    if let group = currentGroup, group.elementIndices.count >= 2 {
+                        completed.append(group)
+                    }
+                    currentGroup = PendingGroup(elementIndices: [entry.elementIndex], stemDirection: entry.stemDirection)
+                    currentGroupBucket = bucket
+                }
+            }
+
+            // Close final group
+            if let group = currentGroup, group.elementIndices.count >= 2 {
+                completed.append(group)
+            }
+        }
+    }
+
+    private func engraveElements(
+        in sourceMeasure: Measure,
+        measureIndex: Int,
+        divisions: Int,
+        isFirstInSystem: Bool,
+        isFirstInScore: Bool,
+        staves: [EngravedStaff],
+        scaling: ScalingContext,
+        targetWidth: CGFloat? = nil
+    ) -> ([Int: [EngravedElement]], [EngravedBeamGroup]) {
+        var elementsByStaff: [Int: [EngravedElement]] = [:]
+        var beamGroups: [EngravedBeamGroup] = []
+
+        let measureDuration = computeMeasureDuration(measure: sourceMeasure, divisions: divisions)
+
+        // Recompute spacing to get x-position of each rhythmic column
+        let spacingElements = extractSpacingElements(from: sourceMeasure)
+        var spacingResult = horizontalSpacing.computeSpacing(
+            elements: spacingElements,
+            divisions: divisions,
+            measureDuration: measureDuration
+        )
+
+        // First measure has extra prefix space for clef + key sig + time sig
+        let prefixWidth: CGFloat = measureIndex == 0
+            ? config.clefWidth + config.keySignatureWidth + config.timeSignatureWidth
+            : 0
+
+        // Justify spacing to fill target width if provided
+        if let targetWidth = targetWidth {
+            let contentTargetWidth = targetWidth - prefixWidth
+            if contentTargetWidth > spacingResult.totalWidth {
+                spacingResult = horizontalSpacing.justify(result: spacingResult, targetWidth: contentTargetWidth)
+            }
+        }
+
+        // Get clefs from attributes
+        let clefs = sourceMeasure.attributes?.clefs ?? []
+
+        // Detect multi-voice context: check if there are notes in more than one voice
+        let voicesPresent = Set(sourceMeasure.elements.compactMap { elem -> Int? in
+            if case .note(let note) = elem, !note.isRest { return note.voice }
+            return nil
+        })
+        let isMultiVoice = voicesPresent.count > 1
+
+        for staff in staves {
+            var elements: [EngravedElement] = []
+            var beamTracker = BeamTracker()
+            let staffNum = staff.staffNumber
+            let halfSpace = staff.staffHeight / 8.0
+            let staffSpace = halfSpace * 2.0  // Distance between two staff lines
+
+            // Determine active clef for this staff
+            let clef = clefs.first(where: {
+                $0.staffNumber == staffNum || ($0.staffNumber == nil && staffNum == 1)
+            })
+
+            // --- Clef ---
+            if isFirstInSystem, let clef = clef {
+                let clefStaffPos = (clef.line - 3) * 2
+                let clefY = staff.centerLineY - CGFloat(clefStaffPos) * halfSpace
+                let clefX = (config.clefWidth + config.keySignatureWidth) / 2
+                let engravedClef = EngravedClef(
+                    clef: clef,
+                    position: CGPoint(x: clefX, y: clefY),
+                    glyph: glyphName(for: clef),
+                    boundingBox: CGRect(x: 0, y: staff.frame.origin.y,
+                                        width: config.clefWidth, height: staff.staffHeight)
+                )
+                elements.append(.clef(engravedClef))
+            }
+
+            // --- Time Signature ---
+            if isFirstInScore,
+               let timeSig = sourceMeasure.attributes?.timeSignatures.first {
+                let tsElements = engraveTimeSignature(
+                    timeSig, staff: staff, halfSpace: halfSpace,
+                    xOffset: config.clefWidth + config.keySignatureWidth
+                )
+                elements.append(contentsOf: tsElements)
+            }
+
+            // --- Notes and Rests ---
+            var currentPosition = 0
+            var lastOnsetPosition = 0  // Tracks onset position for chord tones
+            for elem in sourceMeasure.elements {
+                switch elem {
+                case .note(let note):
+                    // Filter by staff
+                    let matchesStaff = note.staff == staffNum
+                        || (staves.count == 1 && note.staff <= 1)
+                    guard matchesStaff else {
+                        if !note.isChordTone { currentPosition += note.durationDivisions }
+                        continue
+                    }
+
+                    // Chord tones share the onset position of the stem-owning note
+                    let onsetPosition = note.isChordTone ? lastOnsetPosition : currentPosition
+                    let noteX = spacingResult.interpolatedX(for: onsetPosition) + prefixWidth
+
+                    if note.isRest {
+                        // In multi-voice context, suppress rests for non-primary voices
+                        if isMultiVoice && note.voice > 1 {
+                            if !note.isChordTone {
+                                currentPosition += note.durationDivisions
+                            }
+                            continue
+                        }
+
+                        let restY = staff.centerLineY
+                        let glyph = restGlyph(for: note.type)
+                        elements.append(.rest(EngravedRest(
+                            position: CGPoint(x: noteX, y: restY),
+                            glyph: glyph,
+                            boundingBox: CGRect(x: noteX - 6, y: restY - 10, width: 12, height: 20)
+                        )))
+                    } else {
+                        let staffPos = staffPositionForNote(note, clef: clef)
+                        let noteY = staff.centerLineY - CGFloat(staffPos) * halfSpace
+                        let noteheadGlyph = self.noteheadGlyph(for: note)
+
+                        // Chord tones only get a notehead — the stem-owning note owns the stem
+                        var stem: EngravedStem? = nil
+                        var flagGlyph: SMuFLGlyphName? = nil
+                        let needsStem = !note.isChordTone
+                            && note.type != .whole && note.type != .breve && note.type != nil
+
+                        if needsStem {
+                            let stemDir = note.stemDirection ?? (staffPos >= 0 ? .down : .up)
+
+                            // Stem X: right edge of notehead for up stems, left edge for down stems
+                            // Notehead width ≈ 1.18 staff spaces (SMuFL noteheadBlack convention)
+                            let noteheadWidth = 1.18 * staffSpace
+                            let stemX = stemDir == .up ? noteX + noteheadWidth : noteX
+
+                            // Stem length: 3.5 staff spaces default, but ensure stem reaches center line
+                            let defaultStemLength = 3.5 * staffSpace
+                            var stemEndY: CGFloat
+                            if stemDir == .up {
+                                stemEndY = noteY - defaultStemLength
+                                // For notes below center, ensure stem reaches center
+                                if noteY > staff.centerLineY {
+                                    stemEndY = min(stemEndY, staff.centerLineY)
+                                }
+                            } else {
+                                stemEndY = noteY + defaultStemLength
+                                // For notes above center, ensure stem reaches center
+                                if noteY < staff.centerLineY {
+                                    stemEndY = max(stemEndY, staff.centerLineY)
+                                }
+                            }
+
+                            stem = EngravedStem(
+                                start: CGPoint(x: stemX, y: noteY),
+                                end: CGPoint(x: stemX, y: stemEndY),
+                                direction: stemDir,
+                                thickness: 0.8
+                            )
+
+                            // Flag (only for unbeamed notes; beamed notes get beam lines)
+                            if note.beams.isEmpty {
+                                flagGlyph = self.flagGlyph(for: note.type, stemDirection: stemDir)
+                            }
+                        }
+
+                        elements.append(.note(EngravedNote(
+                            noteId: note.id,
+                            position: CGPoint(x: noteX, y: noteY),
+                            staffPosition: staffPos,
+                            noteheadGlyph: noteheadGlyph,
+                            stem: stem,
+                            flagGlyph: flagGlyph,
+                            boundingBox: CGRect(x: noteX - 6, y: noteY - 15, width: 12, height: 30)
+                        )))
+
+                        // Track beamed notes (only stem-owning notes participate)
+                        if needsStem {
+                            beamTracker.processNote(
+                                note: note,
+                                elementIndex: elements.count - 1,
+                                stemDirection: stem?.direction ?? .up,
+                                position: onsetPosition
+                            )
+                        }
+                    }
+
+                    if !note.isChordTone {
+                        lastOnsetPosition = currentPosition
+                        currentPosition += note.durationDivisions
+                    }
+
+                case .backup(let backup):
+                    currentPosition -= backup.duration
+                case .forward(let forward):
+                    currentPosition += forward.duration
+                default:
+                    break
+                }
+            }
+
+            // Auto-group unbeamed eighth notes by beat grouping (2 beats per group in 4/4)
+            beamTracker.autoGroupUnbeamed(divisions: divisions)
+
+            // --- Compute beam geometry for completed beam groups ---
+            let beamThickness = 0.5 * staffSpace  // Standard beam thickness
+            let maxSlope: CGFloat = 0.5
+
+            for group in beamTracker.completed {
+                // Collect stem end points from engraved notes
+                var stemEnds: [CGPoint] = []
+                for idx in group.elementIndices {
+                    guard idx < elements.count,
+                          case .note(let engravedNote) = elements[idx],
+                          let stem = engravedNote.stem else { continue }
+                    stemEnds.append(stem.end)
+                }
+
+                guard let beamLine = calculateBeamEndpoints(
+                    stemEnds: stemEnds,
+                    stemDirection: group.stemDirection,
+                    maxSlope: maxSlope
+                ) else { continue }
+
+                // Adjust each note's stem end to meet the beam line and clear flags
+                for idx in group.elementIndices {
+                    guard idx < elements.count,
+                          case .note(var engravedNote) = elements[idx],
+                          var stem = engravedNote.stem else { continue }
+
+                    let beamYAtStem = beamLine.start.y + beamLine.slope * (stem.end.x - beamLine.start.x)
+                    stem.end.y = beamYAtStem
+                    engravedNote.stem = stem
+                    engravedNote.flagGlyph = nil  // Beamed notes don't get flags
+                    elements[idx] = .note(engravedNote)
+                }
+
+                beamGroups.append(EngravedBeamGroup(
+                    startPoint: beamLine.start,
+                    endPoint: beamLine.end,
+                    thickness: beamThickness,
+                    slope: beamLine.slope,
+                    stemDirection: group.stemDirection,
+                    staffNumber: staffNum
+                ))
+            }
+
+            if !elements.isEmpty {
+                elementsByStaff[staffNum] = elements
+            }
+        }
+
+        return (elementsByStaff, beamGroups)
+    }
+
+    // MARK: - Beam Geometry
+
+    /// Calculates beam endpoints for a group of notes, clamping slope and shifting
+    /// the beam so all stems can reach it.
+    private func calculateBeamEndpoints(
+        stemEnds: [CGPoint],
+        stemDirection: StemDirection,
+        maxSlope: CGFloat
+    ) -> (start: CGPoint, end: CGPoint, slope: CGFloat)? {
+        guard let firstStemEnd = stemEnds.first,
+              let lastStemEnd = stemEnds.last,
+              stemEnds.count >= 2 else {
+            return nil
+        }
+
+        let dx = lastStemEnd.x - firstStemEnd.x
+        guard dx != 0 else {
+            return (firstStemEnd, lastStemEnd, 0)
+        }
+
+        let dy = lastStemEnd.y - firstStemEnd.y
+        var slope = dy / dx
+        slope = max(-maxSlope, min(maxSlope, slope))
+
+        let adjustedEndY = firstStemEnd.y + slope * dx
+
+        var beamStartY = firstStemEnd.y
+        var beamEndY = adjustedEndY
+
+        // Shift beam so all stems can reach it
+        for stemEnd in stemEnds {
+            let beamYAtStem = firstStemEnd.y + slope * (stemEnd.x - firstStemEnd.x)
+            if stemDirection == .up {
+                if stemEnd.y < beamYAtStem {
+                    let adjustment = beamYAtStem - stemEnd.y
+                    beamStartY -= adjustment
+                    beamEndY -= adjustment
+                }
+            } else {
+                if stemEnd.y > beamYAtStem {
+                    let adjustment = stemEnd.y - beamYAtStem
+                    beamStartY += adjustment
+                    beamEndY += adjustment
+                }
+            }
+        }
+
+        return (
+            CGPoint(x: firstStemEnd.x, y: beamStartY),
+            CGPoint(x: lastStemEnd.x, y: beamEndY),
+            slope
+        )
+    }
+
+    // MARK: - Glyph Name Mapping
+
+    private func glyphName(for clef: Clef) -> SMuFLGlyphName {
+        switch clef.sign {
+        case .g: return .gClef
+        case .f: return .fClef
+        case .c: return .cClef
+        case .percussion: return .unpitchedPercussionClef1
+        case .tab, .none: return .gClef
+        }
+    }
+
+    private func noteheadGlyph(for note: Note) -> SMuFLGlyphName {
+        let isXNotehead = note.notehead?.type == .x || note.notehead?.type == .cross
+
+        switch note.type {
+        case .whole:
+            return isXNotehead ? .noteheadXWhole : .noteheadWhole
+        case .half:
+            return isXNotehead ? .noteheadXHalf : .noteheadHalf
+        default:
+            // Quarter and shorter are filled
+            return isXNotehead ? .noteheadXBlack : .noteheadBlack
+        }
+    }
+
+    private func restGlyph(for durationType: DurationBase?) -> SMuFLGlyphName {
+        switch durationType {
+        case .whole: return .restWhole
+        case .half: return .restHalf
+        case .quarter: return .restQuarter
+        case .eighth: return .rest8th
+        case .sixteenth: return .rest16th
+        default: return .restQuarter
+        }
+    }
+
+    private func flagGlyph(for durationType: DurationBase?, stemDirection: StemDirection) -> SMuFLGlyphName? {
+        let isUp = stemDirection == .up
+        switch durationType {
+        case .eighth: return isUp ? .flag8thUp : .flag8thDown
+        case .sixteenth: return isUp ? .flag16thUp : .flag16thDown
+        default: return nil
+        }
+    }
+
+    private func timeSigDigitGlyph(for digit: Character) -> SMuFLGlyphName? {
+        switch digit {
+        case "0": return .timeSig0
+        case "1": return .timeSig1
+        case "2": return .timeSig2
+        case "3": return .timeSig3
+        case "4": return .timeSig4
+        case "5": return .timeSig5
+        case "6": return .timeSig6
+        case "7": return .timeSig7
+        case "8": return .timeSig8
+        case "9": return .timeSig9
+        default: return nil
+        }
+    }
+
+    // MARK: - Staff Position Calculation
+
+    private func staffPositionForNote(_ note: Note, clef: Clef?) -> Int {
+        switch note.noteType {
+        case .pitched(let pitch):
+            return staffPosition(step: pitch.step, octave: pitch.octave, clef: clef)
+        case .unpitched(let unpitched):
+            // Use treble-like mapping for percussion display positions
+            return staffPosition(step: unpitched.displayStep, octave: unpitched.displayOctave, clef: nil)
+        case .rest:
+            return 0
+        }
+    }
+
+    private func staffPosition(step: PitchStep, octave: Int, clef: Clef?) -> Int {
+        // Reference: which note sits on which staff line for this clef
+        let refStep: PitchStep
+        let refOctave: Int
+        let refStaffPos: Int
+
+        if let clef = clef {
+            let clefStaffPos = (clef.line - 3) * 2
+            switch clef.sign {
+            case .g:
+                refStep = .g; refOctave = 4 + (clef.clefOctaveChange ?? 0); refStaffPos = clefStaffPos
+            case .f:
+                refStep = .f; refOctave = 3 + (clef.clefOctaveChange ?? 0); refStaffPos = clefStaffPos
+            case .c:
+                refStep = .c; refOctave = 4 + (clef.clefOctaveChange ?? 0); refStaffPos = clefStaffPos
+            case .percussion, .tab, .none:
+                // Treble-like mapping
+                refStep = .g; refOctave = 4; refStaffPos = -2
+            }
+        } else {
+            // Default: treble clef mapping
+            refStep = .g; refOctave = 4; refStaffPos = -2
+        }
+
+        let diatonicDist = (octave - refOctave) * 7 + step.diatonicPosition - refStep.diatonicPosition
+        return diatonicDist + refStaffPos
+    }
+
+    // MARK: - Time Signature Engraving
+
+    private func engraveTimeSignature(
+        _ timeSig: TimeSignature,
+        staff: EngravedStaff,
+        halfSpace: CGFloat,
+        xOffset: CGFloat
+    ) -> [EngravedElement] {
+        let tsX = xOffset + 8 // Center within time sig area
+
+        // Check for common/cut time symbols
+        if let symbol = timeSig.symbol {
+            switch symbol {
+            case .common:
+                return [.timeSignature(EngravedTimeSignature(
+                    timeSignature: timeSig,
+                    position: CGPoint(x: tsX, y: staff.centerLineY),
+                    symbolGlyph: .timeSigCommon,
+                    boundingBox: CGRect(x: tsX - 6, y: staff.frame.origin.y, width: 12, height: staff.staffHeight)
+                ))]
+            case .cut:
+                return [.timeSignature(EngravedTimeSignature(
+                    timeSignature: timeSig,
+                    position: CGPoint(x: tsX, y: staff.centerLineY),
+                    symbolGlyph: .timeSigCutCommon,
+                    boundingBox: CGRect(x: tsX - 6, y: staff.frame.origin.y, width: 12, height: staff.staffHeight)
+                ))]
+            default:
+                break
+            }
+        }
+
+        // Numeric time signature: top digits above center, bottom digits below center
+        let topY = staff.centerLineY - 2 * halfSpace    // Between lines 3 and 5
+        let bottomY = staff.centerLineY + 2 * halfSpace // Between lines 1 and 3
+
+        var topGlyphs: [(glyph: SMuFLGlyphName, position: CGPoint)] = []
+        var bottomGlyphs: [(glyph: SMuFLGlyphName, position: CGPoint)] = []
+
+        // Engrave numerator digits
+        let beatsStr = timeSig.beats
+        let beatsWidth = CGFloat(beatsStr.count) * halfSpace * 2
+        var digitX = tsX - beatsWidth / 2 + halfSpace
+        for char in beatsStr {
+            if let glyph = timeSigDigitGlyph(for: char) {
+                topGlyphs.append((glyph: glyph, position: CGPoint(x: digitX, y: topY)))
+                digitX += halfSpace * 2
+            }
+        }
+
+        // Engrave denominator digits
+        let beatTypeStr = timeSig.beatType
+        let beatTypeWidth = CGFloat(beatTypeStr.count) * halfSpace * 2
+        digitX = tsX - beatTypeWidth / 2 + halfSpace
+        for char in beatTypeStr {
+            if let glyph = timeSigDigitGlyph(for: char) {
+                bottomGlyphs.append((glyph: glyph, position: CGPoint(x: digitX, y: bottomY)))
+                digitX += halfSpace * 2
+            }
+        }
+
+        return [.timeSignature(EngravedTimeSignature(
+            timeSignature: timeSig,
+            position: CGPoint(x: tsX, y: staff.centerLineY),
+            topGlyphs: topGlyphs,
+            bottomGlyphs: bottomGlyphs,
+            boundingBox: CGRect(x: tsX - 8, y: staff.frame.origin.y,
+                                width: 16, height: staff.staffHeight)
+        ))]
     }
 
     private func buildCredits(
@@ -702,6 +1340,26 @@ public struct EdgeInsets: Sendable {
     }
 
     public static let zero = EdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+}
+
+// MARK: - Equatable Conformance
+
+extension LayoutContext: Equatable {
+    public static func == (lhs: LayoutContext, rhs: LayoutContext) -> Bool {
+        lhs.pageSize == rhs.pageSize
+            && lhs.margins == rhs.margins
+            && lhs.staffHeight == rhs.staffHeight
+            && lhs.fontName == rhs.fontName
+    }
+}
+
+extension EdgeInsets: Equatable {
+    public static func == (lhs: EdgeInsets, rhs: EdgeInsets) -> Bool {
+        lhs.top == rhs.top
+            && lhs.left == rhs.left
+            && lhs.bottom == rhs.bottom
+            && lhs.right == rhs.right
+    }
 }
 
 // MARK: - Legacy Compatibility

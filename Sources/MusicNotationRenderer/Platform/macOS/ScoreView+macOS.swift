@@ -252,72 +252,14 @@ public final class ScoreView: NSView, ScoreViewProtocol {
         // Apply scroll offset
         context.translateBy(x: -scrollOffset.x / zoomLevel, y: -scrollOffset.y / zoomLevel)
 
-        // Calculate visible rect in score coordinates
-        let visibleRect = CGRect(
-            x: scrollOffset.x / zoomLevel,
-            y: scrollOffset.y / zoomLevel,
-            width: dirtyRect.width / zoomLevel,
-            height: dirtyRect.height / zoomLevel
-        )
+        // Use MusicRenderer for full notation rendering
+        let renderer = MusicRenderer()
+        renderer.font = renderState.font
 
-        renderState.viewport = visibleRect
 
-        // Draw each page
-        for page in engraved.pages {
-            // Check if page is visible
-            guard page.frame.intersects(visibleRect) else { continue }
-
-            context.saveGState()
-            context.translateBy(x: page.frame.origin.x, y: page.frame.origin.y)
-
-            // Draw page background (white)
-            if configuration.showPageShadow {
-                context.setShadow(offset: CGSize(width: 2, height: 2), blur: 5, color: NSColor.black.withAlphaComponent(0.3).cgColor)
-            }
-
-            context.setFillColor(NSColor.white.cgColor)
-            context.fill(CGRect(origin: .zero, size: page.frame.size))
-            context.setShadow(offset: .zero, blur: 0)
-
-            // Draw systems
-            for system in page.systems {
-                drawSystem(system, in: context)
-            }
-
-            context.restoreGState()
+        for pageIndex in 0..<engraved.pages.count {
+            renderer.render(score: engraved, pageIndex: pageIndex, in: context)
         }
-
-        context.restoreGState()
-    }
-
-    private func drawSystem(_ system: EngravedSystem, in context: CGContext) {
-        context.saveGState()
-        context.translateBy(x: system.frame.origin.x, y: system.frame.origin.y)
-
-        // Draw staff lines for each staff
-        for staff in system.staves {
-            drawStaff(staff, in: context)
-        }
-
-        context.restoreGState()
-    }
-
-    private func drawStaff(_ staff: EngravedStaff, in context: CGContext) {
-        guard let staffRenderer = renderState.staffRenderer else { return }
-
-        context.saveGState()
-        context.translateBy(x: staff.frame.origin.x, y: staff.frame.origin.y)
-
-        // Draw staff lines
-        let staffSpacing = staff.staffHeight / 4
-        staffRenderer.renderStaffLines(
-            at: .zero,
-            width: staff.frame.width,
-            lineCount: staff.lineCount,
-            staffSpacing: staffSpacing,
-            color: foregroundColor,
-            in: context
-        )
 
         context.restoreGState()
     }
