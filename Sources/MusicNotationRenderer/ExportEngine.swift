@@ -486,12 +486,18 @@ public final class ExportEngine {
             context.saveGState()
             context.translateBy(x: system.frame.origin.x, y: system.frame.origin.y)
 
+            // Draw staff groupings (braces, brackets)
+            renderGroupings(system.groupings, staves: system.staves, renderState: renderState, in: context)
+
             // Draw staves
             for staff in system.staves {
                 renderStaff(staff, renderState: renderState, in: context)
             }
 
-            // Draw measures
+            // Draw system barlines
+            renderSystemBarlines(system.systemBarlines, renderState: renderState, in: context)
+
+            // Draw measures (elements, beams, barlines)
             for measure in system.measures {
                 renderMeasure(measure, renderState: renderState, in: context)
             }
@@ -501,7 +507,7 @@ public final class ExportEngine {
 
         // Draw credits
         for credit in page.credits {
-            renderCredit(credit, in: context)
+            renderCredit(credit, renderState: renderState, in: context)
         }
     }
 
@@ -525,8 +531,7 @@ public final class ExportEngine {
     }
 
     private func renderMeasure(_ measure: EngravedMeasure, renderState: ScoreRenderState, in context: CGContext) {
-        guard let staffRenderer = renderState.staffRenderer,
-              let glyphRenderer = renderState.glyphRenderer else { return }
+        guard let staffRenderer = renderState.staffRenderer else { return }
 
         context.saveGState()
         context.translateBy(x: measure.frame.origin.x, y: measure.frame.origin.y)
@@ -544,86 +549,352 @@ public final class ExportEngine {
         // Draw elements
         for (_, elements) in measure.elementsByStaff {
             for element in elements {
-                renderElement(element, glyphRenderer: glyphRenderer, in: context)
+                renderElement(element, renderState: renderState, in: context)
+            }
+        }
+
+        // Draw beam groups
+        if let beamRenderer = renderState.beamRenderer {
+            for beamGroup in measure.beamGroups {
+                let beamInfo = BeamGroupRenderInfo(
+                    primaryBeamStart: beamGroup.startPoint,
+                    primaryBeamEnd: beamGroup.endPoint,
+                    beamThickness: beamGroup.thickness,
+                    stemDirection: beamGroup.stemDirection,
+                    slope: beamGroup.slope
+                )
+                beamRenderer.renderBeamGroup(beamInfo, color: config.foregroundColor, in: context)
             }
         }
 
         context.restoreGState()
     }
 
-    private func renderElement(_ element: EngravedElement, glyphRenderer: GlyphRenderer, in context: CGContext) {
+    private func renderElement(_ element: EngravedElement, renderState: ScoreRenderState, in context: CGContext) {
+        guard let glyphRenderer = renderState.glyphRenderer else { return }
+        let color = config.foregroundColor
+
         switch element {
         case .note(let note):
-            glyphRenderer.renderGlyph(
-                note.noteheadGlyph,
-                at: note.position,
-                color: config.foregroundColor,
-                in: context
-            )
-            if let accGlyph = note.accidentalGlyph {
-                let accPos = CGPoint(x: note.position.x + note.accidentalOffset, y: note.position.y)
-                glyphRenderer.renderGlyph(accGlyph, at: accPos, color: config.foregroundColor, in: context)
-            }
+            renderNote(note, renderState: renderState, in: context)
 
         case .rest(let rest):
-            glyphRenderer.renderGlyph(rest.glyph, at: rest.position, color: config.foregroundColor, in: context)
+            glyphRenderer.renderGlyph(rest.glyph, at: rest.position, color: color, in: context)
 
         case .chord(let chord):
-            for note in chord.notes {
-                glyphRenderer.renderGlyph(note.noteheadGlyph, at: note.position, color: config.foregroundColor, in: context)
-            }
+            renderChord(chord, renderState: renderState, in: context)
 
         case .clef(let clef):
-            glyphRenderer.renderGlyph(clef.glyph, at: clef.position, color: config.foregroundColor, in: context)
+            glyphRenderer.renderGlyph(clef.glyph, at: clef.position, color: color, in: context)
 
         case .keySignature(let keySig):
             for (glyph, pos) in keySig.accidentals {
-                glyphRenderer.renderGlyph(glyph, at: pos, color: config.foregroundColor, in: context)
+                glyphRenderer.renderGlyph(glyph, at: pos, color: color, in: context)
             }
 
         case .timeSignature(let timeSig):
             if let symbol = timeSig.symbolGlyph {
-                glyphRenderer.renderGlyph(symbol, at: timeSig.position, color: config.foregroundColor, in: context)
+                glyphRenderer.renderGlyph(symbol, at: timeSig.position, color: color, in: context)
             } else {
                 for (glyph, pos) in timeSig.topGlyphs {
-                    glyphRenderer.renderGlyph(glyph, at: pos, color: config.foregroundColor, in: context)
+                    glyphRenderer.renderGlyph(glyph, at: pos, color: color, in: context)
                 }
                 for (glyph, pos) in timeSig.bottomGlyphs {
-                    glyphRenderer.renderGlyph(glyph, at: pos, color: config.foregroundColor, in: context)
+                    glyphRenderer.renderGlyph(glyph, at: pos, color: color, in: context)
                 }
             }
 
-        case .barline:
-            // Barlines are rendered at measure level
-            break
+        case .barline(let barline):
+            if let staffRenderer = renderState.staffRenderer {
+                staffRenderer.renderBarline(
+                    style: barline.style,
+                    at: barline.frame.origin.x,
+                    topY: barline.frame.origin.y,
+                    bottomY: barline.frame.maxY,
+                    color: color,
+                    in: context
+                )
+            }
 
         case .direction(let direction):
-            // Simplified - would need text renderer for full implementation
-            _ = direction.position
+            renderDirection(direction, renderState: renderState, in: context)
         }
     }
 
-    private func renderCredit(_ credit: EngravedCredit, in context: CGContext) {
-        // Simplified credit rendering
-        #if os(macOS)
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: credit.fontSize),
-            .foregroundColor: NSColor(cgColor: config.foregroundColor) ?? NSColor.black
-        ]
-        let string = NSAttributedString(string: credit.text, attributes: attrs)
-        let line = CTLineCreateWithAttributedString(string)
-        context.textPosition = credit.position
-        CTLineDraw(line, context)
-        #elseif os(iOS) || os(visionOS)
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: credit.fontSize),
-            .foregroundColor: UIColor(cgColor: config.foregroundColor) ?? UIColor.black
-        ]
-        let string = NSAttributedString(string: credit.text, attributes: attrs)
-        let line = CTLineCreateWithAttributedString(string)
-        context.textPosition = credit.position
-        CTLineDraw(line, context)
-        #endif
+    // MARK: - Note Rendering
+
+    private func renderNote(_ note: EngravedNote, renderState: ScoreRenderState, in context: CGContext) {
+        guard let noteRenderer = renderState.noteRenderer else { return }
+        let color = config.foregroundColor
+
+        // Build accidental info
+        var accidentalInfo: AccidentalInfo? = nil
+        if let accGlyph = note.accidentalGlyph {
+            let accPos = CGPoint(x: note.position.x + note.accidentalOffset, y: note.position.y)
+            accidentalInfo = AccidentalInfo(glyph: accGlyph, position: accPos)
+        }
+
+        // Build stem info
+        var stemInfo: StemRenderInfo? = nil
+        if let stem = note.stem {
+            stemInfo = StemRenderInfo(
+                start: stem.start,
+                end: stem.end,
+                direction: stem.direction,
+                thickness: stem.thickness
+            )
+        }
+
+        // Build flag info
+        var flagInfo: FlagInfo? = nil
+        if let flagGlyph = note.flagGlyph, let stem = note.stem {
+            flagInfo = FlagInfo(glyph: flagGlyph, position: stem.end)
+        }
+
+        let noteInfo = NoteRenderInfo(
+            position: note.position,
+            staffPosition: note.staffPosition,
+            noteheadGlyph: note.noteheadGlyph,
+            accidental: accidentalInfo,
+            stem: stemInfo,
+            flag: flagInfo,
+            dots: note.dots
+        )
+
+        noteRenderer.renderNote(noteInfo, color: color, in: context)
+    }
+
+    // MARK: - Chord Rendering
+
+    private func renderChord(_ chord: EngravedChord, renderState: ScoreRenderState, in context: CGContext) {
+        guard let noteRenderer = renderState.noteRenderer else { return }
+        let color = config.foregroundColor
+
+        // Build noteheads
+        let noteheads: [(glyph: SMuFLGlyphName, position: CGPoint)] = chord.notes.map { note in
+            (glyph: note.noteheadGlyph, position: note.position)
+        }
+
+        // Build accidentals
+        let accidentals: [(glyph: SMuFLGlyphName, position: CGPoint)] = chord.notes.compactMap { note in
+            guard let accGlyph = note.accidentalGlyph else { return nil }
+            let accPos = CGPoint(x: note.position.x + note.accidentalOffset, y: note.position.y)
+            return (glyph: accGlyph, position: accPos)
+        }
+
+        // Build stem info
+        var stemInfo: StemRenderInfo? = nil
+        if let stem = chord.stem {
+            stemInfo = StemRenderInfo(
+                start: stem.start,
+                end: stem.end,
+                direction: stem.direction,
+                thickness: stem.thickness
+            )
+        }
+
+        // Build flag info
+        var flagInfo: FlagInfo? = nil
+        if let flagGlyph = chord.flagGlyph, let stem = chord.stem {
+            flagInfo = FlagInfo(glyph: flagGlyph, position: stem.end)
+        }
+
+        // Collect dots from all notes
+        let dots = chord.notes.flatMap { $0.dots }
+
+        let staffPositions = chord.notes.map { $0.staffPosition }
+
+        let chordInfo = ChordRenderInfo(
+            noteheads: noteheads,
+            staffPositions: staffPositions,
+            accidentals: accidentals,
+            stem: stemInfo,
+            flag: flagInfo,
+            dots: dots
+        )
+
+        noteRenderer.renderChord(chordInfo, color: color, in: context)
+    }
+
+    // MARK: - Direction Rendering
+
+    private func renderDirection(_ direction: EngravedDirection, renderState: ScoreRenderState, in context: CGContext) {
+        let color = config.foregroundColor
+
+        switch direction.content {
+        case .text(let text):
+            if let textRenderer = renderState.textRenderer {
+                let dirInfo = DirectionTextRenderInfo(
+                    text: text,
+                    position: direction.position
+                )
+                textRenderer.renderDirection(dirInfo, color: color, in: context)
+            }
+
+        case .dynamic(let dynamicGlyph):
+            if let glyphRenderer = renderState.glyphRenderer {
+                glyphRenderer.renderGlyph(dynamicGlyph, at: direction.position, color: color, in: context)
+            }
+
+        case .wedge(let wedge):
+            renderWedge(wedge, y: direction.position.y, color: color, in: context)
+
+        case .metronome(let metronome):
+            renderMetronome(metronome, at: direction.position, renderState: renderState, in: context)
+        }
+    }
+
+    private func renderWedge(_ wedge: WedgeContent, y: CGFloat, color: CGColor, in context: CGContext) {
+        context.saveGState()
+        context.setStrokeColor(color)
+        context.setLineWidth(0.16)
+        context.setLineCap(.round)
+
+        if wedge.isCresc {
+            // Crescendo: converges from left to right opening
+            context.move(to: CGPoint(x: wedge.startX, y: y))
+            context.addLine(to: CGPoint(x: wedge.endX, y: y - wedge.spreadEnd / 2))
+            context.move(to: CGPoint(x: wedge.startX, y: y))
+            context.addLine(to: CGPoint(x: wedge.endX, y: y + wedge.spreadEnd / 2))
+        } else {
+            // Diminuendo: opens from left, converges to right
+            context.move(to: CGPoint(x: wedge.startX, y: y - wedge.spreadStart / 2))
+            context.addLine(to: CGPoint(x: wedge.endX, y: y))
+            context.move(to: CGPoint(x: wedge.startX, y: y + wedge.spreadStart / 2))
+            context.addLine(to: CGPoint(x: wedge.endX, y: y))
+        }
+
+        context.strokePath()
+        context.restoreGState()
+    }
+
+    private func renderMetronome(_ metronome: MetronomeContent, at position: CGPoint, renderState: ScoreRenderState, in context: CGContext) {
+        guard let textRenderer = renderState.textRenderer,
+              let glyphRenderer = renderState.glyphRenderer else { return }
+        let color = config.foregroundColor
+
+        // Render beat unit glyph
+        glyphRenderer.renderGlyphScaled(
+            metronome.beatUnitGlyph,
+            at: position,
+            scale: 0.6,
+            color: color,
+            in: context
+        )
+
+        // Render dots
+        let glyphAdvance = glyphRenderer.getAdvance(for: metronome.beatUnitGlyph) * 0.6
+        var xOffset = glyphAdvance + 2
+
+        for _ in 0..<metronome.beatUnitDots {
+            glyphRenderer.renderGlyphScaled(
+                .augmentationDot,
+                at: CGPoint(x: position.x + xOffset, y: position.y),
+                scale: 0.6,
+                color: color,
+                in: context
+            )
+            xOffset += 3
+        }
+
+        // Render " = BPM"
+        let bpmText = " = \(metronome.bpm)"
+        textRenderer.renderText(
+            bpmText,
+            at: CGPoint(x: position.x + xOffset, y: position.y),
+            fontSize: 12,
+            color: color,
+            in: context
+        )
+    }
+
+    // MARK: - System-Level Rendering
+
+    private func renderSystemBarlines(_ barlines: [EngravedSystemBarline], renderState: ScoreRenderState, in context: CGContext) {
+        guard let staffRenderer = renderState.staffRenderer else { return }
+
+        for barline in barlines {
+            staffRenderer.renderBarline(
+                style: barline.style,
+                at: barline.x,
+                topY: barline.topY,
+                bottomY: barline.bottomY,
+                color: config.foregroundColor,
+                in: context
+            )
+        }
+    }
+
+    private func renderGroupings(_ groupings: [EngravedStaffGrouping], staves: [EngravedStaff], renderState: ScoreRenderState, in context: CGContext) {
+        guard let glyphRenderer = renderState.glyphRenderer else { return }
+
+        for grouping in groupings {
+            guard grouping.topStaffIndex < staves.count,
+                  grouping.bottomStaffIndex < staves.count else { continue }
+
+            let topStaff = staves[grouping.topStaffIndex]
+            let bottomStaff = staves[grouping.bottomStaffIndex]
+            let topY = topStaff.frame.origin.y
+            let bottomY = bottomStaff.frame.origin.y + bottomStaff.staffHeight
+
+            switch grouping.symbol {
+            case .brace:
+                glyphRenderer.renderBrace(
+                    at: grouping.x,
+                    topY: topY,
+                    bottomY: bottomY,
+                    color: config.foregroundColor,
+                    in: context
+                )
+
+            case .bracket:
+                glyphRenderer.renderBracket(
+                    at: grouping.x,
+                    topY: topY,
+                    bottomY: bottomY,
+                    thickness: 0.5,
+                    color: config.foregroundColor,
+                    in: context
+                )
+
+            case .line:
+                context.saveGState()
+                context.setStrokeColor(config.foregroundColor)
+                context.setLineWidth(0.16)
+                context.move(to: CGPoint(x: grouping.x, y: topY))
+                context.addLine(to: CGPoint(x: grouping.x, y: bottomY))
+                context.strokePath()
+                context.restoreGState()
+
+            case .square, .none:
+                break
+            }
+        }
+    }
+
+    // MARK: - Credit Rendering
+
+    private func renderCredit(_ credit: EngravedCredit, renderState: ScoreRenderState, in context: CGContext) {
+        guard let textRenderer = renderState.textRenderer else { return }
+
+        let alignment: TextAlignment
+        switch credit.justification {
+        case .left:
+            alignment = .left
+        case .right:
+            alignment = .right
+        case .center, .none:
+            alignment = .center
+        }
+
+        let creditInfo = CreditRenderInfo(
+            text: credit.text,
+            position: credit.position,
+            fontSize: credit.fontSize,
+            alignment: alignment
+        )
+
+        textRenderer.renderCredit(creditInfo, color: config.foregroundColor, in: context)
     }
 }
 

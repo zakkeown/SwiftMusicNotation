@@ -249,19 +249,21 @@ public final class TextRenderer {
         }
 
         let fontSize = direction.fontSize ?? config.directionFontSize
-        // Note: traits are built but renderAlignedText doesn't use them directly
-        // Future enhancement: pass traits to renderAlignedText
-        _ = traits
+        let fontName = direction.fontName ?? config.directionFontName
+        let font = getFont(name: fontName, size: fontSize, traits: traits)
+        let bounds = measureText(direction.text, font: font)
 
-        renderAlignedText(
-            direction.text,
-            at: direction.position,
-            fontSize: fontSize,
-            fontName: direction.fontName ?? config.directionFontName,
-            alignment: direction.alignment,
-            color: color,
-            in: context
-        )
+        var drawPosition = direction.position
+        switch direction.alignment {
+        case .left:
+            break
+        case .center:
+            drawPosition.x -= bounds.width / 2
+        case .right:
+            drawPosition.x -= bounds.width
+        }
+
+        renderText(direction.text, at: drawPosition, font: font, color: color, in: context)
     }
 
     // MARK: - Rehearsal Marks
@@ -392,19 +394,21 @@ public final class TextRenderer {
             traits.insert(.traitBold)
         }
 
-        // Note: traits are built but renderAlignedText doesn't use them directly
-        // Future enhancement: pass traits to renderAlignedText
-        _ = traits
+        let fontName = credit.fontName ?? config.creditFontName
+        let font = getFont(name: fontName, size: credit.fontSize, traits: traits)
+        let bounds = measureText(credit.text, font: font)
 
-        renderAlignedText(
-            credit.text,
-            at: credit.position,
-            fontSize: credit.fontSize,
-            fontName: credit.fontName ?? config.creditFontName,
-            alignment: credit.alignment,
-            color: color,
-            in: context
-        )
+        var drawPosition = credit.position
+        switch credit.alignment {
+        case .left:
+            break
+        case .center:
+            drawPosition.x -= bounds.width / 2
+        case .right:
+            drawPosition.x -= bounds.width
+        }
+
+        renderText(credit.text, at: drawPosition, font: font, color: color, in: context)
     }
 
     // MARK: - Text Measurement
